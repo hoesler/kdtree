@@ -1,6 +1,6 @@
 package org.asoem.kdtree
 
-case class KDNode[A](override val point: HyperPoint, override val value : A, splitDim: Int = -1, left: KDNode[A] = null, right: KDNode[A] = null) extends KDTuple[A](point, value) {
+class KDNode[A](override val point: HyperPoint, override val value : A, val splitDim: Int = -1, val left: KDNode[A] = null, val right: KDNode[A] = null) extends KDTuple[A](point, value) {
 
   def this(data : KDTuple[A], splitDim: Int, left: KDNode[A], right: KDNode[A]) = this(data.point, data.value, splitDim, left, right)
 
@@ -13,10 +13,10 @@ case class KDNode[A](override val point: HyperPoint, override val value : A, spl
   }
 
   def updatedLeft(node: KDNode[A]) : KDNode[A] = {
-    KDNode(point, value, splitDim, node, right)
+    new KDNode(point, value, splitDim, node, right)
   }
 
   def updatedRight(node: KDNode[A]) : KDNode[A] = {
-    KDNode(point, value, splitDim, left, node)
+    new KDNode(point, value, splitDim, left, node)
   }
 }

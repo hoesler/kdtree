@@ -12,9 +12,9 @@ case class HyperPointN(coordinates : List[Double]) extends HyperPoint {
   def this(coordinates : Traversable[Double]) = this(coordinates toList)
   def this(coordinates : java.lang.Iterable[Double]) = this(iterableAsScalaIterable(coordinates))
 
-  def apply(idx : Int) : Double =  coordinates(idx)
+  def apply(idx : Int) : Double = coordinates(idx)
 
-  def dim = coordinates.length
+  override def dim = coordinates.length
 
   def distance(that : HyperPoint) : Double = {
     require(this.dim == that.dim)
@@ -28,16 +28,16 @@ case class HyperPointN(coordinates : List[Double]) extends HyperPoint {
     sqrt(squareSum(0, dim))
   }
 
-  def edit(dim : Int, value : Double) : HyperPoint = HyperPoint.at(coordinates.updated(dim, value))
+  def edit(dim : Int, value : Double) : HyperPoint = HyperPoint(coordinates.updated(dim, value))
 
-  def /(divisor : Double) : HyperPoint = HyperPoint.at(coordinates.map(e => e / divisor))
+  def /(divisor : Double) : HyperPoint = HyperPoint(coordinates.map(e => e / divisor))
 
-  def -(that : HyperPoint) = HyperPoint.at((coordinates, that.coordinates).zipped.map(_ - _))
+  def -(that : HyperPoint) = HyperPoint((coordinates, that.coordinates).zipped.map(_ - _))
 
-  def +(that : HyperPoint) = HyperPoint.at((coordinates, that.coordinates).zipped.map(_ + _))
+  def +(that : HyperPoint) = HyperPoint((coordinates, that.coordinates).zipped.map(_ + _))
 
-  def -(c : Double) = HyperPoint.at(coordinates.map(_-c))
+  def -(c : Double) = HyperPoint(coordinates.map(_-c))
 
-  def +(c : Double) = HyperPoint.at(coordinates.map(_+c))
+  def +(c : Double) = HyperPoint(coordinates.map(_+c))
 
 }

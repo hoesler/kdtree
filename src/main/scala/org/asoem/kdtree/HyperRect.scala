@@ -1,9 +1,8 @@
 package org.asoem.kdtree
 
-import runtime.Int
 import annotation.tailrec
 
-case class HyperRect(min : HyperPoint, max : HyperPoint) extends HyperObject {
+class HyperRect(val min : HyperPoint, val max : HyperPoint) extends HyperObject {
   require(min != null)
   require(max != null)
   require(min.dim == max.dim,
@@ -52,7 +51,7 @@ case class HyperRect(min : HyperPoint, max : HyperPoint) extends HyperObject {
     if (this intersects that) {
       val new_min = (min.coordinates, that.min.coordinates).zipped.map(math.max(_, _))
       val new_max = (max.coordinates, that.max.coordinates).zipped.map(math.min(_, _))
-      return HyperRect(HyperPoint.at(new_min), HyperPoint.at(new_max))
+      return HyperRect(HyperPoint(new_min), HyperPoint(new_max))
     }
 
     null
@@ -74,6 +73,8 @@ case class HyperRect(min : HyperPoint, max : HyperPoint) extends HyperObject {
 }
 
 object HyperRect {
+
+  def apply(min : HyperPoint, max : HyperPoint) : HyperRect = { new HyperRect(min, max) }
 
   def max(dim : Int) : HyperRect = {
     HyperRect(HyperPoint.min(dim), HyperPoint.max(dim))

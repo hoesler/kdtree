@@ -1,8 +1,5 @@
 package org.asoem.kdtree
 
-import scala.math.{sqrt, pow}
-import annotation.tailrec
-
 trait HyperPoint extends HyperObject {
 
   def distance(that : HyperPoint) : Double
@@ -16,7 +13,7 @@ trait HyperPoint extends HyperObject {
   def coordinates : List[Double]
 
   override def toString :String = {
-    return "[" + coordinates.mkString(" ") + "]"
+    "[" + coordinates.mkString(" ") + "]"
   }
 
   def /(divisor : Double) : HyperPoint
@@ -33,18 +30,18 @@ object HyperPoint {
   def max(dim : Int) : HyperPoint = fill(dim, () => Double.MaxValue)
 
   def fill[A](dim : Int, f : () => Double) : HyperPoint = dim match {
-    case 2 => at(f(), f())
-    case _ => at(List.fill(dim)(f()))
+    case 2 => HyperPoint(f(), f())
+    case _ => HyperPoint(List.fill(dim)(f()))
   }
 
-  def at(c1 : Double, c2 : Double) : HyperPoint = {
+  def apply(c1 : Double, c2 : Double) : HyperPoint = {
     new HyperPoint2(c1, c2)
   }
 
-  def at(coords : Double*) : HyperPoint = coords.length match {
+  def apply(coords : Double*) : HyperPoint = coords.length match {
     case 2 => new HyperPoint2(coords(0), coords(1))
     case _ => new HyperPointN(coords)
   }
 
-  def at(coords : List[Double]) : HyperPoint = at(coords toArray : _*)
+  def apply(coords : Traversable[Double]) : HyperPoint = HyperPoint(coords.toArray : _*)
 }

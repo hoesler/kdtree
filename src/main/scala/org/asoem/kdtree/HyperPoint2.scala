@@ -9,11 +9,11 @@ case class HyperPoint2(c1 : Double, c2 : Double) extends HyperPoint {
     sqrt(pow(this(0) - that(0), 2) + pow(this(1) - that(1), 2))
   }
 
-  def dim = 2
+  override def dim = 2
 
   def edit(dim : Int, value : Double) = dim match {
-    case 0 => HyperPoint.at(value, this(1))
-    case 1 => HyperPoint.at(this(0), value)
+    case 0 => HyperPoint(value, this(1))
+    case 1 => HyperPoint(this(0), value)
     case _ => throw new IndexOutOfBoundsException
   }
 
@@ -25,17 +25,17 @@ case class HyperPoint2(c1 : Double, c2 : Double) extends HyperPoint {
     case _ => throw new IndexOutOfBoundsException
   }
 
-  def /(divisor : Double) : HyperPoint = HyperPoint.at(this(0) / divisor, this(1) / divisor)
+  def /(divisor : Double) : HyperPoint = HyperPoint(this(0) / divisor, this(1) / divisor)
 
-  def -(c : Double) = HyperPoint.at(this(0) - c, this(1) - c)
-  def +(c : Double) = HyperPoint.at(this(0) + c, this(1) + c)
+  def -(c : Double) = HyperPoint(this(0) - c, this(1) - c)
+  def +(c : Double) = HyperPoint(this(0) + c, this(1) + c)
 
   def -(that : HyperPoint) : HyperPoint = {
     require(that.dim == 2)
-    HyperPoint.at(this(0) - that(0), this(1) - that(1))
+    HyperPoint(this(0) - that(0), this(1) - that(1))
   }
   def +(that : HyperPoint) : HyperPoint = {
     require(that.dim == 2);
-    HyperPoint.at(this(0) + that(0), this(1) + that(1))
+    HyperPoint(this(0) + that(0), this(1) + that(1))
   }
 }

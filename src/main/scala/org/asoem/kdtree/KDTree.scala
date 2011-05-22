@@ -1,35 +1,32 @@
 package org.asoem.kdtree
 
-import annotation.tailrec
 import scala.actors.Futures._
 import collection.Iterable
+import collection.mutable.{ListBuffer, Stack}
 
-class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) extends HyperObject {
+class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) extends HyperObject with Iterable[KDNode[A]] {
 
-  require(pointValueInput != null, "PointList is NULL")
+  require(pointValueInput != null, "Argument 'pointValueInput' must not be null")
 
-  override def dim = if (pointValueInput.isEmpty) 0 else pointValueInput(0).dim
+  override val dim = pointValueInput.size match {
+    case 0 => 0
+    case 1 => pointValueInput.head.dim
+    case _ => {
+      require(pointValueInput.forall(e => e.dim == pointValueInput.head.dim),
+        "All elements in 'pointValueInput' must have the same dimension")
+      pointValueInput.head.dim
+    }
+  }
 
-  require(pointValueInput.forall(e => e.dim == dim), "All Points must have the same dimension")
+  override val size = pointValueInput.size
 
-  private val threshold : Int =
-    if (forkJoinThreshold == 0) math.max(pointValueInput.length, 1000) / Runtime.getRuntime().availableProcessors
-    else forkJoinThreshold
+  private val root = {
 
-  private val root = buildTree(pointValueInput)
+    val threshold =
+      if (forkJoinThreshold == 0) math.max(pointValueInput.size, 1000) / Runtime.getRuntime.availableProcessors
+      else forkJoinThreshold
 
-  lazy val boundingBox = calculateBoundingBox
-
-  lazy val size = toList.size
-
-  def this() = this(Nil, 0)
-  def this(pointValueInput : Seq[KDTuple[A]]) = this(pointValueInput, 0)
-  def this(pointValueInput : Seq[HyperPoint], mapFunction : (HyperPoint) => A, forkJoinThreshold : Int = 0) =
-    this(pointValueInput.map(e => KDTuple(e, mapFunction(e))), forkJoinThreshold)
-  def this(pointValueInput : Iterable[KDTuple[A]]) = this(pointValueInput toSeq)
-
-  private def buildTree(list : Seq[KDTuple[A]]) : KDNode[A] = {
-    def append(sublist : Seq[KDTuple[A]], depth : Int, useFuture : Boolean = false) : KDNode[A] = sublist.length match {
+    def append(sublist : Seq[KDTuple[A]], depth : Int = 0) : KDNode[A] = sublist.length match {
       case 0 => null
       case _ =>
         assert(dim != 0)
@@ -53,112 +50,88 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
         )
     }
 
-    append(list, 0, true)
+    if (dim == 0) null else append(pointValueInput)
   }
 
-  override def toString : String = {
-    if (root == null)
-      return "null"
-    else {
-      return traverse(root, 0, "")
-    }
-  }
-
-  private def traverse(node : KDNode[A], depth : Int, prefix : String) : String = {
-
-    val str = new StringBuilder
-
-    str.append(prefix)
-    if (node != null)
-      str.append(node)
-    else
-      str.append("0")
-    str.append("\n")
-
-    val treePrefix =
-      if (prefix.isEmpty) ""
-      else prefix.dropRight(3).+(
-        if (prefix.charAt(prefix.length - 3) == '|') "|  "
-        else "   "
-      )
-
-    if (node != null && ! node.isLeaf) {
-      str.append(traverse(node.right, depth+1, treePrefix + "|--"))
-      str.append(traverse(node.left, depth+1, treePrefix + "`--"))
-    }
-
-    return str.toString
-  }
+  def this() = this(Nil, 0)
+  def this(pointValueInput : Seq[KDTuple[A]]) = this(pointValueInput, 0)
+  def this(pointValueInput : Seq[HyperPoint], mapFunction : (HyperPoint) => A, forkJoinThreshold : Int = 0) =
+    this(pointValueInput.map(e => new KDTuple(e, mapFunction(e))), forkJoinThreshold)
+  def this(pointValueInput : Iterable[KDTuple[A]]) = this(pointValueInput toSeq)
 
   def findNeighbours(searchPoint : HyperPoint,
-                     max: Int = Integer.MAX_VALUE,
-                     range : Double = Double.MaxValue) : List[NNResult[A]] = {
-    //@tailrec
-    def combinedSearch(node : KDNode[A],
-                       searchPoint : HyperPoint,
-                       range : Double,
-                       list : List[NNResult[A]] = Nil) : List[NNResult[A]] = node match {
-      case null => list
+                     nNeighbours: Int = Integer.MAX_VALUE,
+                     searchRange : Double = Double.MaxValue) : List[NNResult[A]] = {
 
-      case _ =>
-      {
+    require(searchPoint != null, "Argument 'searchPoint' must not be null")
+    require(searchPoint.dim == dim, "Dimension of 'searchPoint' (%d) does not match dimension of this tree (%d).".format(searchPoint.dim, dim))
+    require(searchRange >= 0, "Argument searchRange must not be negative: " + searchRange)
+
+    if (nNeighbours == 0) // TODO: should maybe produce at least a log message
+      return Nil
+
+    val resultList = ListBuffer[NNResult[A]]()
+
+    def search(node : KDNode[A]) {
+      if (node != null) {
         val dist = searchPoint.distance(node.point)
 
-        val updatedList =
-          if (dist <= range) {
-            val element = NNResult(node.point, node.value, dist)
-            element :: list
-          }
-          else list
+        if (dist <= searchRange) {
+          val element = new NNResult(node.point, node.value, dist)
+          resultList.prepend(element);
+        }
 
-        if (node.isLeaf)
-          return updatedList
+        if (!node.isLeaf) {
 
-        val dx = searchPoint(node.splitDim) - node.point(node.splitDim)
-        val closeChild = if (dx <= 0) node.left else node.right
-        val farChild = if (dx <= 0) node.right else node.left
+          val distance = searchPoint(node.splitDim) - node.point(node.splitDim)
+          val closeChild = if (distance <= 0) node.left else node.right
+          val farChild = if (distance <= 0) node.right else node.left
 
-        // search in the HyperRect not containing searchPoint
-        // if it intersects with the search range
-        val listFar =
-          if (math.abs(dx) <= range)
-            combinedSearch( farChild, searchPoint, range, updatedList )
-          else
-            updatedList
+          // search in the HyperRect containing searchPoint
+          search(closeChild)
 
-        // search in the HyperRect containing searchPoint
-        combinedSearch( closeChild, searchPoint, range, listFar )
+          // search in the HyperRect not containing searchPoint
+          // if it intersects with searchRange
+          if (math.abs(distance) <= searchRange)
+            search(farChild)
+        }
       }
     }
 
-    require(searchPoint != null)
-    require(searchPoint.dim == dim)
+    search(root)
 
-    if (max == 0) // TODO: should maybe produce at least a log message
-      return Nil
+    val sortedResultList = resultList.sorted
 
-    val sortedResultList = combinedSearch(root, searchPoint, range) sorted
-
-    if (sortedResultList.size > max)
-      sortedResultList take max
+    (if (sortedResultList.size > nNeighbours)
+      sortedResultList take nNeighbours
     else
-      sortedResultList
+      sortedResultList)
+      .toList
   }
 
-  def toList : List[KDNode[A]] = {
-    collectNodes(root)
-  }
+  override def iterator: Iterator[KDNode[A]] =
+    new Iterator[KDNode[A]] {
+      val nodeStack = Stack(root)
 
-  //@tailrec
-  private def collectNodes(node : KDNode[A], list : List[KDNode[A]] = Nil) : List[KDNode[A]] = node match {
-    case null           => list
-    case _              => {
-      val newList = node :: list
-      collectNodes(node.right, collectNodes(node.left, newList))
+      override def hasNext = {
+        ! nodeStack.isEmpty && ! nodeStack.head.isLeaf
+      }
+
+      override def next() = {
+        if (hasNext) {
+          val node = nodeStack.pop()
+          if (node.right != null)
+            nodeStack push node.right
+          if (node.left != null)
+            nodeStack push node.left
+          nodeStack.head
+        }
+        else
+          throw new NoSuchElementException
+      }
     }
-  }
 
-  private def calculateBoundingBox() = {
+  override lazy val boundingBox = {
     var min = HyperPoint.zero(dim)
     var max = HyperPoint.zero(dim)
     for (i <- 0 to dim-1) {
