@@ -1,6 +1,6 @@
 package org.asoem.kdtree
 
-case class HyperSphere(origin : HyperPoint, radius : Double) extends HyperObject {
+class HyperSphere(val origin : HyperPoint, val radius : Double) extends HyperObject {
 	
 	require(origin != null)
 
@@ -21,7 +21,7 @@ case class HyperSphere(origin : HyperPoint, radius : Double) extends HyperObject
 		rect.intersects(this)
 	}
 	
-	def boundingBox = {
+	override val boundingBox = {
 		var min : HyperPoint = origin - radius;
 		var max : HyperPoint = origin + radius;
 		HyperRect(min, max)

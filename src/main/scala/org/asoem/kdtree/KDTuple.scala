@@ -6,9 +6,6 @@ object KDTuple {
 
 class KDTuple[A](val point: HyperPoint, val value : A) {
 
-  override def toString: String = {
-    point.toString
-  }
-
-  def dim = point.dim
+  override def toString = point.toString
+  override def dim = point.dim
 }
