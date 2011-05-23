@@ -2,7 +2,7 @@ package org.asoem.kdtree
 
 import annotation.tailrec
 
-class HyperRect(val min : HyperPoint, val max : HyperPoint) extends HyperObject {
+case class HyperRect(min : HyperPoint, max : HyperPoint) extends HyperObject {
   require(min != null)
   require(max != null)
   require(min.dim == max.dim,
@@ -69,12 +69,12 @@ class HyperRect(val min : HyperPoint, val max : HyperPoint) extends HyperObject 
     (this, null)
   }
 
-  def boundingBox = this
+  override def boundingBox = this
+
+  override def toString = "[%s,%s]".format(min, max)
 }
 
 object HyperRect {
-
-  def apply(min : HyperPoint, max : HyperPoint) : HyperRect = { new HyperRect(min, max) }
 
   def max(dim : Int) : HyperRect = {
     HyperRect(HyperPoint.min(dim), HyperPoint.max(dim))

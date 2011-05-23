@@ -1,6 +1,6 @@
 package org.asoem.kdtree
 
-class HyperSphere(val origin : HyperPoint, val radius : Double) extends HyperObject {
+case class HyperSphere(origin : HyperPoint, radius : Double) extends HyperObject {
 	
 	require(origin != null)
 

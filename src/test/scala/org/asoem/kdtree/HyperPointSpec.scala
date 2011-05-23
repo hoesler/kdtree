@@ -15,6 +15,13 @@ import scala.math.{sqrt, pow}
 @RunWith(classOf[JUnitRunner])
 class HyperPointSpec extends FlatSpec with ShouldMatchers {
 
+  "Two HyperPoint objects" can "be equal" in {
+    val point1 = HyperPoint(0,0)
+    val point2 = HyperPoint(0,0)
+
+    assert(point1 == point2, "%s is not equal to %s".format(point1, point2))
+  }
+
   "A HyperPoint" should "correctly compute the distance to another point" in {
     val point1 = HyperPoint(2.5, 54.2, 76.3)
     val point2 = HyperPoint(54.2, 756.1, 4.1)
