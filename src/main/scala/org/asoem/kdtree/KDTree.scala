@@ -20,7 +20,7 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
 
   override val size = pointValueInput.size
 
-  private val root = {
+  private val _root = {
 
     val threshold =
       if (forkJoinThreshold == 0) math.max(pointValueInput.size, 1000) / Runtime.getRuntime.availableProcessors
@@ -52,6 +52,7 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
 
     if (dim == 0) null else append(pointValueInput)
   }
+  def root : KDNode[A] = _root;
 
   def this() = this(Nil, 0)
   def this(pointValueInput : Seq[KDTuple[A]]) = this(pointValueInput, 0)
@@ -98,7 +99,7 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
       }
     }
 
-    search(root)
+    search(_root)
 
     val sortedResultList = resultList.sorted
 
@@ -111,7 +112,7 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
 
   override def iterator: Iterator[KDNode[A]] =
     new Iterator[KDNode[A]] {
-      val nodeStack = Stack(root)
+      val nodeStack = Stack(_root)
 
       override def hasNext = {
         ! nodeStack.isEmpty && ! nodeStack.head.isLeaf
