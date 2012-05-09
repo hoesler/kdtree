@@ -1,8 +1,9 @@
 package org.asoem.kdtree
 
 import scala.actors.Futures._
+import collection.mutable.{LinkedList, ListBuffer, Stack}
+import scala.Int
 import collection.Iterable
-import collection.mutable.{ListBuffer, Stack}
 
 class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) extends HyperObject with Iterable[KDNode[A]] {
 
@@ -71,7 +72,19 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
     if (nNeighbours == 0) // TODO: should maybe produce at least a log message
       return Nil
 
-    val resultList = ListBuffer[NNResult[A]]()
+    var resultList = LinkedList[NNResult[A]]()
+
+    def insertWhere[T](list: LinkedList[T], elem: T, p: (T) => Boolean) : LinkedList[T] = {
+      require( list != null && elem != null && p != null)
+
+      if ( list.isEmpty )
+        new LinkedList[T](elem, null)
+
+      else if (p.apply(list.elem))
+        new LinkedList(elem, list)
+
+      else list.append(insertWhere[T]( list.next, elem, p))
+    }
 
     def search(node : KDNode[A]) {
       if (node != null) {
@@ -79,7 +92,8 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
 
         if (dist <= searchRange) {
           val element = new NNResult(node.point, node.value, dist)
-          resultList.prepend(element);
+          //resultList = insertWhere[NNResult[A]](resultList, element, (e) => { assume(e != null); (element compare e) <= 0})
+          resultList = resultList.append(new LinkedList(element, null))
         }
 
         if (!node.isLeaf) {
@@ -101,13 +115,7 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
 
     search(_root)
 
-    val sortedResultList = resultList.sorted
-
-    (if (sortedResultList.size > nNeighbours)
-      sortedResultList take nNeighbours
-    else
-      sortedResultList)
-      .toList
+    (resultList take nNeighbours).toList
   }
 
   override def iterator: Iterator[KDNode[A]] =
