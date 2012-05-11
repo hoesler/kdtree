@@ -113,7 +113,7 @@ object PerformanceTest {
 
     override def setUp() { iter = searchPoints.iterator }
     override def preRun() { assert(iter != null && iter.hasNext) }
-    def run() {nnList = tree.findNeighbours(iter.next(), searchRange=radius)}
+    def run() {nnList = tree.filterRange(iter.next(), radius)}
     override def postRun() {}
   }
 
