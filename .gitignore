@@ -3,3 +3,5 @@
 KDTree.iml
 reports/
 target/
+.gradle/
+build/
