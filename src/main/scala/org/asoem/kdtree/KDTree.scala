@@ -18,7 +18,6 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
       pointValueInput.head.dim
     }
   }
-
   override val size = pointValueInput.size
 
   private val _root = {
@@ -27,24 +26,28 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
       if (forkJoinThreshold == 0) math.max(pointValueInput.size, 1000) / Runtime.getRuntime.availableProcessors
       else forkJoinThreshold
 
+    val splitAxisFunction = if (dim == 2) (depth:Int) => {depth & 1} else (depth:Int) => {depth % dim}
+
     def append(sublist : Seq[KDTuple[A]], depth : Int = 0) : KDNode[A] = sublist.length match {
       case 0 => null
+      case 1 => new KDNode(sublist.head, splitAxisFunction(depth), null, null)
       case _ =>
         assert(dim != 0)
 
-        val axis = if (dim == 2) depth & 1 else depth % dim
-        val sublistSorted = sublist.sortBy(e => e.point(axis))
-        val median = sublist.length / 2
+        val axis = splitAxisFunction(depth)
+        val indexOfSplit = sublist.length / 2
+        val (left, rightWithMedian) = sublist.sortBy(e => e.point(axis)).splitAt(indexOfSplit)
 
-        val appendLeft = () => append(sublistSorted.take(median), depth+1)
-        val appendRight = () => append(sublistSorted.drop(median+1), depth+1)
+        val newDepth: Int = depth + 1
+        val appendLeft = () => append(left, newDepth)
+        val appendRight = () => append(rightWithMedian.tail, newDepth)
 
         val doFork = (sublist.length > threshold)
         val resultLeft = if (doFork) future{appendLeft()} else appendLeft
         val resultRight = if (doFork) future{appendRight()} else appendRight
 
         new KDNode(
-          sublistSorted(median),
+          rightWithMedian.head,
           axis,
           resultLeft(),
           resultRight()
