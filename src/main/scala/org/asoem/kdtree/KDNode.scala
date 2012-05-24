@@ -13,7 +13,7 @@ object KDNode {
   def apply[A](point: HyperPoint, value : A, splitDim: Int, children : Product2[KDNode[A], KDNode[A]]) : KDNode[A] = children match {
     case Product2(null, null) => new LeafNode(point, value, splitDim)
     case Product2(_, null) => new HalfBranchNode(point, value, splitDim, children._1)
-    case Product2(null, _) => throw AssertionError("A KD Tree has never a node with just a right child!")
+    case Product2(null, _) => throw new AssertionError("A KD Tree has never a node with just a right child!")
     case Product2(_, _) => new FullBranchNode(point, value, splitDim, children._1, children._2)
   }
 }
