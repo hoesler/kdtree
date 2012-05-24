@@ -32,7 +32,7 @@ class KDTree[+A](pointValueInput : Seq[Product2[HyperPoint, A]], forkJoinThresho
 
     def append(sublist : Seq[Product2[HyperPoint, A]], depth : Int = 0) : KDNode[A] = sublist.length match {
       case 0 => null
-      case 1 => KDNode(sublist.head, splitAxisFunction(depth), null, null)
+      case 1 => new LeafNode(sublist.head._1, sublist.head._2, splitAxisFunction(depth))
       case _ =>
         assert(dim != 0)
 
@@ -119,43 +119,42 @@ class KDTree[+A](pointValueInput : Seq[Product2[HyperPoint, A]], forkJoinThresho
     require(searchPoint.dim == dim, "Dimension of 'searchPoint' (%d) does not match dimension of this tree (%d).".format(searchPoint.dim, dim))
     require(k <= size, "k=%d must be <= size=%d".format(k, size))
 
-    if (k == 0) // TODO: should maybe produce at least a log message
+    if (k == 0)
       return Nil
 
     var resultList = LinkedList[NNResult[A]]()
     var farNode = LinkedList[NNResult[A]]()
 
     def search(node : KDNode[A]) {
-      if (node != null) {
-        val distanceToSearchPoint = searchPoint.distance(node.point)
+      if (node == null)
+        return
 
-        if ( ! node.isLeaf ) {
+      if ( ! node.isLeaf ) {
+        val translationInSplitDim = searchPoint(node.splitDim) - node.point(node.splitDim)
+        val closeChild = if (translationInSplitDim <= 0) node.left else node.right
+        val farChild = if (translationInSplitDim <= 0) node.right else node.left
 
-          val translationInSplitDim = searchPoint(node.splitDim) - node.point(node.splitDim)
-          val closeChild = if (translationInSplitDim <= 0) node.left else node.right
-          val farChild = if (translationInSplitDim <= 0) node.right else node.left
+        // search in the HyperRect containing searchPoint
+        search(closeChild)
 
-          // search in the HyperRect containing searchPoint
-          search(closeChild)
+        // search in the HyperRect not containing searchPoint
+        // if it intersects with searchRange
+        if (farNode.isEmpty || new HyperSphere(searchPoint, farNode.elem.distance).contains(farChild.point))
+          search(farChild)
+      }
 
-          // search in the HyperRect not containing searchPoint
-          // if it intersects with searchRange
-          if (farNode.isEmpty || new HyperSphere(searchPoint, farNode.elem.distance).contains(farChild.point))
-            search(farChild)
-        }
+      val distanceToSearchPoint = searchPoint.distance(node.point)
+      if (resultList.size < k) {
+        val element = new NNResult(node, distanceToSearchPoint)
+        val list = LinkedList[NNResult[A]](element)
+        resultList = resultList.append(list)
 
-        if (resultList.size < k) {
-          val element = new NNResult(node, distanceToSearchPoint)
-          val list = LinkedList[NNResult[A]](element)
-          resultList = resultList.append(list)
-
-          if (farNode.isEmpty || (farNode.elem compare element) < 0)
-            farNode = list
-        }
-        else if (distanceToSearchPoint < farNode.elem.distance) {
-          val element = new NNResult(node, distanceToSearchPoint)
-          farNode.elem = element
-        }
+        if (farNode.isEmpty || (farNode.elem compare element) < 0)
+          farNode = list
+      }
+      else if (distanceToSearchPoint < farNode.elem.distance) {
+        val element = new NNResult(node, distanceToSearchPoint)
+        farNode.elem = element
       }
     }
 

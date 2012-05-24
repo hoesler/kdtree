@@ -2,7 +2,7 @@ package org.asoem.kdtree
 
 object KDNode {
 
-  def apply[A](pointValueTuple: Product2[HyperPoint, A], splitDim: Int, left: KDNode[A], right: KDNode[A]) : KDNode[A] = {
+  def apply[A](pointValueTuple: Product2[HyperPoint, A], splitDim: Int, left: KDNode[A] = null, right: KDNode[A] = null) : KDNode[A] = {
     apply(pointValueTuple._1, pointValueTuple._2, splitDim, left, right)
   }
 
@@ -11,10 +11,10 @@ object KDNode {
   }
 
   def apply[A](point: HyperPoint, value : A, splitDim: Int, children : Product2[KDNode[A], KDNode[A]]) : KDNode[A] = children match {
-    case Product2(null, null) => new LeafNode(point, value, splitDim)
-    case Product2(_, null) => new HalfBranchNode(point, value, splitDim, children._1)
-    case Product2(null, _) => throw new AssertionError("A KD Tree has never a node with just a right child!")
-    case Product2(_, _) => new FullBranchNode(point, value, splitDim, children._1, children._2)
+    case (null, null) => new LeafNode(point, value, splitDim)
+    case (_, null) => new HalfBranchNode(point, value, splitDim, children._1)
+    case (null, _) => throw new AssertionError("A KD Tree has never a node with just a right child!")
+    case (_, _) => new FullBranchNode(point, value, splitDim, children._1, children._2)
   }
 }
 
