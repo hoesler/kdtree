@@ -2,7 +2,7 @@ apply plugin: 'scala'
 apply plugin: 'maven'
 
 group="org.asoem"
-version="1.0.2"
+version="1.0.3"
 
 repositories {
     mavenLocal()
@@ -16,4 +16,20 @@ dependencies {
 
     // Libraries needed for scala api
     compile 'org.scala-lang:scala-library:2.9.2'
+    testCompile 'org.scalatest:scalatest_2.9.2:1.7.2', "junit:junit:4.10"
+}
+
+task scalatest(dependsOn: testClasses) << {
+    ant.taskdef(
+            name:'scalatest',
+            classname: 'org.scalatest.tools.ScalaTestAntTask',
+            classpath: sourceSets.test.runtimeClasspath.asPath
+    )
+    ant.scalatest(
+            runpath: sourceSets.test.output.classesDir,
+            haltonfailure: 'true',
+            fork: 'false'
+    ) {
+        reporter(type: 'stdout')
+    }
 }

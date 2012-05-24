@@ -1,15 +1,52 @@
 package org.asoem.kdtree
 
-class KDNode[A](override val point: HyperPoint, override val value : A, val splitDim: Int = -1, val left: KDNode[A] = null, val right: KDNode[A] = null) extends KDTuple[A](point, value) {
+object KDNode {
 
-  def this(data : KDTuple[A], splitDim: Int, left: KDNode[A], right: KDNode[A]) =
-    this(data.point, data.value, splitDim, left, right)
+  def apply[A](pointValueTuple: Product2[HyperPoint, A], splitDim: Int, left: KDNode[A], right: KDNode[A]) : KDNode[A] = {
+    apply(pointValueTuple._1, pointValueTuple._2, splitDim, left, right)
+  }
 
-  val isLeaf = left == null && right == null
+  def apply[A](point: HyperPoint, value : A, splitDim: Int, left: KDNode[A], right: KDNode[A]) : KDNode[A] = {
+    apply(point, value, splitDim, (left, right))
+  }
+
+  def apply[A](point: HyperPoint, value : A, splitDim: Int, children : Product2[KDNode[A], KDNode[A]]) : KDNode[A] = children match {
+    case Product2(null, null) => new LeafNode(point, value, splitDim)
+    case Product2(_, null) => new HalfBranchNode(point, value, splitDim, children._1)
+    case Product2(null, _) => throw AssertionError("A KD Tree has never a node with just a right child!")
+    case Product2(_, _) => new FullBranchNode(point, value, splitDim, children._1, children._2)
+  }
+}
+
+trait KDNode[+A] extends PointValueTuple[A] {
+
+  require(point.dim > splitDim)
+
+  def point: HyperPoint
+  def value: A
+  def splitDim: Int
+
+  def left: KDNode[A]
+  def right: KDNode[A]
+  def isLeaf: Boolean
 
   def splitCoordinate = point(splitDim)
 
-  def updatedLeft(node: KDNode[A]) = new KDNode[A](point, value, splitDim, node, right)
+  def updatedLeft[B>:A](node: KDNode[B]) = KDNode[B](point, value, splitDim, node, right)
+  def updatedRight[B>:A](node: KDNode[B]) = KDNode[B](point, value, splitDim, left, node)
+}
 
-  def updatedRight(node: KDNode[A]) = new KDNode[A](point, value, splitDim, left, node)
+class FullBranchNode[+A](val point: HyperPoint, val value : A, val splitDim: Int, val left: KDNode[A], val right: KDNode[A]) extends KDNode[A] {
+  def isLeaf = false
+}
+
+class HalfBranchNode[+A](val point: HyperPoint, val value : A, val splitDim: Int, val left: KDNode[A]) extends KDNode[A] {
+  def right = null
+  def isLeaf = false
+}
+
+class LeafNode[+A](val point: HyperPoint, val value : A, val splitDim: Int) extends KDNode[A] {
+  def left = null
+  def right = null
+  def isLeaf = true
 }

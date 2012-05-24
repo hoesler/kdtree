@@ -5,19 +5,21 @@ import scala.collection.Iterable
 import scala.collection.mutable.{LinkedList, Stack}
 import scala._
 
-class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) extends HyperObject with Iterable[KDNode[A]] {
+class KDTree[+A](pointValueInput : Seq[Product2[HyperPoint, A]], forkJoinThreshold : Int) extends HyperObject with Iterable[KDNode[A]] {
 
   require(pointValueInput != null, "Argument 'pointValueInput' must not be null")
 
   override val dim = pointValueInput.size match {
     case 0 => 0
-    case 1 => pointValueInput.head.dim
+    case 1 => pointValueInput.head._1.dim
     case _ => {
-      require(pointValueInput.forall(e => e.dim == pointValueInput.head.dim),
+      val dimFirstElement: Int = pointValueInput.head._1.dim
+      require(pointValueInput.forall(e => { e._1.dim == dimFirstElement }),
         "All elements in 'pointValueInput' must have the same dimension")
-      pointValueInput.head.dim
+      dimFirstElement
     }
   }
+
   override val size = pointValueInput.size
 
   private val _root = {
@@ -28,15 +30,15 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
 
     val splitAxisFunction = if (dim == 2) (depth:Int) => {depth & 1} else (depth:Int) => {depth % dim}
 
-    def append(sublist : Seq[KDTuple[A]], depth : Int = 0) : KDNode[A] = sublist.length match {
+    def append(sublist : Seq[Product2[HyperPoint, A]], depth : Int = 0) : KDNode[A] = sublist.length match {
       case 0 => null
-      case 1 => new KDNode(sublist.head, splitAxisFunction(depth), null, null)
+      case 1 => KDNode(sublist.head, splitAxisFunction(depth), null, null)
       case _ =>
         assert(dim != 0)
 
         val axis = splitAxisFunction(depth)
         val indexOfSplit = sublist.length / 2
-        val (left, rightWithMedian) = sublist.sortBy(e => e.point(axis)).splitAt(indexOfSplit)
+        val (left, rightWithMedian) = sublist.sortBy(e => e._1(axis)).splitAt(indexOfSplit)
 
         val newDepth: Int = depth + 1
         val appendLeft = () => append(left, newDepth)
@@ -46,7 +48,7 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
         val resultLeft = if (doFork) future{appendLeft()} else appendLeft
         val resultRight = if (doFork) future{appendRight()} else appendRight
 
-        new KDNode(
+        KDNode(
           rightWithMedian.head,
           axis,
           resultLeft(),
@@ -56,13 +58,11 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
 
     if (dim == 0) null else append(pointValueInput)
   }
-  def root : KDNode[A] = _root;
+  def root : KDNode[A] = _root
 
   def this() = this(Nil, 0)
-  def this(pointValueInput : Seq[KDTuple[A]]) = this(pointValueInput, 0)
-  def this(pointValueInput : Seq[HyperPoint], mapFunction : (HyperPoint) => A, forkJoinThreshold : Int = 0) =
-    this(pointValueInput.map(e => new KDTuple(e, mapFunction(e))), forkJoinThreshold)
-  def this(pointValueInput : Iterable[KDTuple[A]]) = this(pointValueInput toSeq)
+  def this(pointValueInput : Seq[Product2[HyperPoint, A]]) = this(pointValueInput, 0)
+  def this(pointValueInput : Iterable[Product2[HyperPoint, A]]) = this(pointValueInput toSeq)
 
   def filterRange(origin : HyperPoint, range : Double) : List[NNResult[A]] =
     filterRange(new HyperSphere(origin, range))
@@ -71,13 +71,21 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
     require(range != null, "Argument 'range' must not be null")
     require(range.dim == dim, "Dimension of 'searchPoint' (%d) does not match dimension of this tree (%d).".format(range.dim, dim))
 
-    def search(node : KDNode[A]) : List[NNResult[A]] = {
-      if (node != null) {
+    def search(node : KDNode[A]) : List[NNResult[A]] = node match {
+      case null => Nil
+
+      case x:LeafNode[_] =>
+        val dist = range.origin.distance(node.point)
+        if (dist <= range.radius)
+          List(new NNResult(node, dist))
+        else Nil
+
+      case _    =>
         val dist = range.origin.distance(node.point)
 
         val prefix =
           if (dist <= range.radius)
-            List(new NNResult(node.point, node.value, dist))
+            List(new NNResult(node, dist))
           else Nil
 
         val postfix = if ( ! node.isLeaf ) {
@@ -100,9 +108,6 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
           Nil
 
         prefix ::: postfix
-      }
-      else
-        Nil
     }
 
     search(_root)
@@ -140,7 +145,7 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
         }
 
         if (resultList.size < k) {
-          val element = new NNResult(node.point, node.value, distanceToSearchPoint)
+          val element = new NNResult(node, distanceToSearchPoint)
           val list = LinkedList[NNResult[A]](element)
           resultList = resultList.append(list)
 
@@ -148,7 +153,7 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
             farNode = list
         }
         else if (distanceToSearchPoint < farNode.elem.distance) {
-          val element = new NNResult(node.point, node.value, distanceToSearchPoint)
+          val element = new NNResult(node, distanceToSearchPoint)
           farNode.elem = element
         }
       }
@@ -185,9 +190,9 @@ class KDTree[A](pointValueInput : Seq[KDTuple[A]], forkJoinThreshold : Int) exte
     var min = HyperPoint.zero(dim)
     var max = HyperPoint.zero(dim)
     for (i <- 0 to dim-1) {
-      val sorted = pointValueInput.sortWith((e1, e2) => e1.point(i) < e2.point(i))
-      min = min.edit(i, math.min(min(i), sorted.head.point(i)))
-      max = max.edit(i, math.max(max(i), sorted.last.point(i)))
+      val sorted = pointValueInput.sortWith((e1, e2) => e1._1(i) < e2._1(i))
+      min = min.edit(i, math.min(min(i), sorted.head._1(i)))
+      max = max.edit(i, math.max(max(i), sorted.last._1(i)))
     }
     HyperRect(min, max)
   }
