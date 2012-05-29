@@ -2,7 +2,7 @@ package org.asoem.kdtree;
 
 import scala.math.{sqrt, pow}
 
-case class HyperPoint2(c1 : Double, c2 : Double) extends HyperPoint {
+case class HyperPoint2(x : Double, y : Double) extends HyperPoint {
 
   def distance(that : HyperPoint) : Double = {
     require(that.dim == 2)
@@ -17,11 +17,11 @@ case class HyperPoint2(c1 : Double, c2 : Double) extends HyperPoint {
     case _ => throw new IndexOutOfBoundsException
   }
 
-  def coordinates = List(c1, c2)
+  def coordinates = List(x, y)
 
   def apply(idx : Int) : Double = idx match {
-    case 0 => c1
-    case 1 => c2
+    case 0 => x
+    case 1 => y
     case _ => throw new IndexOutOfBoundsException
   }
 
