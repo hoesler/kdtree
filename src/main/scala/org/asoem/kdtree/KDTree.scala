@@ -33,18 +33,18 @@ class KDTree[+A](pointValueInput : Seq[Product2[HyperPoint, A]], forkJoinThresho
     def append(sublist : Seq[Product2[HyperPoint, A]], depth : Int = 0) : KDNode[A] = sublist.length match {
       case 0 => null
       case 1 => new LeafNode(sublist.head._1, sublist.head._2, splitAxisFunction(depth))
-      case _ =>
+      case sublistLength =>
         assert(dim != 0)
 
         val axis = splitAxisFunction(depth)
-        val indexOfSplit = sublist.length / 2
-        val (left, rightWithMedian) = sublist.sortBy(e => e._1(axis)).splitAt(indexOfSplit)
+        val indexOfSplit = sublistLength / 2
+        val (left, rightWithMedian) = sublist.sortWith(_._1(axis) < _._1(axis)).splitAt(indexOfSplit)
 
         val newDepth: Int = depth + 1
         val appendLeft = () => append(left, newDepth)
         val appendRight = () => append(rightWithMedian.tail, newDepth)
 
-        val doFork = (sublist.length > threshold)
+        val doFork = (sublistLength > threshold)
         val resultLeft = if (doFork) future{appendLeft()} else appendLeft
         val resultRight = if (doFork) future{appendRight()} else appendRight
 
