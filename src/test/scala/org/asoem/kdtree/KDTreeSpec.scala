@@ -16,22 +16,12 @@ class KDTreeSpec extends FlatSpec with ShouldMatchers {
 		HyperPoint(4,7),
 		HyperPoint(8,1),
 		HyperPoint(7,2))
-	val tree = new KDTree(points.map(e => (e, 0)))
+	val tree = KDTree(points.map(e => (e, 0)))
 
 
   "A KDTree" should "contain corect number of keys after construction" in {
       assert(tree.size == points.size,
         tree.size + " != " + points.size)
-  }
-
-  it should "handle zero points" in {
-      val emptyTree = new KDTree(Nil);
-      assert(emptyTree.size == 0, "");
-  }
-
-	it should "correctly report it's nodes" in {
-		val nodes = tree.toList
-		assert(nodes.forall(e => points contains e.point))
   }
 
   it can "be searched for the nearest neighbours to a given point" in {
@@ -50,7 +40,7 @@ class KDTreeSpec extends FlatSpec with ShouldMatchers {
 
   it should "handle duplicates" in {
     val points_with_dup = HyperPoint(7,2) :: points
-    val tree_with_dup = new KDTree(points_with_dup.map(e => (e, 0)))
+    val tree_with_dup = KDTree(points_with_dup.map(e => (e, 0)))
 
     val resultList = tree_with_dup.filterRange(HyperPoint(7,2), 1.5)
     val resultListPoints = resultList.map(e => e.point)

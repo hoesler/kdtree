@@ -1,40 +1,39 @@
 package org.asoem.kdtree
 
 import scala.actors.Futures._
-import scala.collection.Iterable
-import scala.collection.mutable.{LinkedList, Stack}
+import scala.collection.mutable.LinkedList
 import scala._
 
-class KDTree[+A](pointValueInput : Seq[Product2[HyperPoint, A]], forkJoinThreshold : Int) extends HyperObject with Iterable[KDNode[A]] {
+class KDTree[+A](val dim : Int, pointValueInput : Seq[Product2[HyperPoint, A]], forkJoinThreshold : Int) extends HyperObject {
 
-  require(pointValueInput != null, "Argument 'pointValueInput' must not be null")
+  require(pointValueInput != null, "Argument 'pointValueTuples' must not be null")
 
-  override val dim = pointValueInput.size match {
-    case 0 => 0
-    case 1 => pointValueInput.head._1.dim
-    case _ => {
-      val dimFirstElement: Int = pointValueInput.head._1.dim
-      require(pointValueInput.forall(e => { e._1.dim == dimFirstElement }),
-        "All elements in 'pointValueInput' must have the same dimension")
-      dimFirstElement
-    }
-  }
+  /** The size of this tree which is the number of nodes accessible via root
+   *
+   */
+  val size = pointValueInput.length
 
-  override val size = pointValueInput.size
-
-  private val _root = {
-
-    val threshold =
-      if (forkJoinThreshold == 0) math.max(pointValueInput.size, 1000) / Runtime.getRuntime.availableProcessors
-      else forkJoinThreshold
+  /** The root node
+   *
+   */
+  val root = {
 
     val splitAxisFunction = if (dim == 2) (depth:Int) => {depth & 1} else (depth:Int) => {depth % dim}
 
+    def checkDim(node : KDNode[A]) : KDNode[A] = {
+      if (node.point.dim != this.dim)
+        throw new IllegalArgumentException("Point has differing dimension: " + node.point.dim + " != " + this.dim)
+      else
+        node
+    }
+
     def append(sublist : Seq[Product2[HyperPoint, A]], depth : Int = 0) : KDNode[A] = sublist.length match {
       case 0 => null
-      case 1 => new LeafNode(sublist.head._1, sublist.head._2, splitAxisFunction(depth))
+
+      case 1 =>
+        checkDim(new LeafNode(sublist.head._1, sublist.head._2, splitAxisFunction(depth)))
+
       case sublistLength =>
-        assert(dim != 0)
 
         val axis = splitAxisFunction(depth)
         val indexOfSplit = sublistLength / 2
@@ -44,25 +43,22 @@ class KDTree[+A](pointValueInput : Seq[Product2[HyperPoint, A]], forkJoinThresho
         val appendLeft = () => append(left, newDepth)
         val appendRight = () => append(rightWithMedian.tail, newDepth)
 
-        val doFork = (sublistLength > threshold)
+        val doFork = (sublistLength > forkJoinThreshold)
         val resultLeft = if (doFork) future{appendLeft()} else appendLeft
         val resultRight = if (doFork) future{appendRight()} else appendRight
 
-        KDNode(
-          rightWithMedian.head,
-          axis,
-          resultLeft(),
-          resultRight()
+        checkDim(
+          KDNode(
+            rightWithMedian.head,
+            axis,
+            resultLeft(),
+            resultRight()
+          )
         )
     }
 
     if (dim == 0) null else append(pointValueInput)
   }
-  def root : KDNode[A] = _root
-
-  def this() = this(Nil, 0)
-  def this(pointValueInput : Seq[Product2[HyperPoint, A]]) = this(pointValueInput, 0)
-  def this(pointValueInput : Iterable[Product2[HyperPoint, A]]) = this(pointValueInput toSeq)
 
   def filterRange(origin : HyperPoint, range : Double) : List[NNResult[A]] =
     filterRange(new HyperSphere(origin, range))
@@ -110,7 +106,7 @@ class KDTree[+A](pointValueInput : Seq[Product2[HyperPoint, A]], forkJoinThresho
         prefix ::: postfix
     }
 
-    search(_root)
+    search(root)
   }
 
   def findNeighbours(searchPoint : HyperPoint, k: Int = 1) : List[NNResult[A]] = {
@@ -158,32 +154,10 @@ class KDTree[+A](pointValueInput : Seq[Product2[HyperPoint, A]], forkJoinThresho
       }
     }
 
-    search(_root)
+    search(root)
 
     resultList.toList
   }
-
-  override def iterator: Iterator[KDNode[A]] =
-    new Iterator[KDNode[A]] {
-      val nodeStack = Stack(_root)
-
-      override def hasNext = {
-        ! nodeStack.isEmpty && ! nodeStack.head.isLeaf
-      }
-
-      override def next() = {
-        if (hasNext) {
-          val node = nodeStack.pop()
-          if (node.right != null)
-            nodeStack push node.right
-          if (node.left != null)
-            nodeStack push node.left
-          nodeStack.head
-        }
-        else
-          throw new NoSuchElementException
-      }
-    }
 
   override lazy val boundingBox = {
     var min = HyperPoint.zero(dim)
@@ -197,3 +171,26 @@ class KDTree[+A](pointValueInput : Seq[Product2[HyperPoint, A]], forkJoinThresho
   }
 }
 
+object KDTree {
+
+  def apply[A](dim: Int, pointValueTuples : Seq[Product2[HyperPoint, A]]) : KDTree[A] = {
+    new KDTree[A](dim, pointValueTuples, math.max(pointValueTuples.size, 1000) / Runtime.getRuntime.availableProcessors)
+  }
+
+  /**
+   * Creates a new KDTree from `pointValueTuples`.
+   * Assumes that the dimension of the first point in `pointValueTuples` is the desired dimension of the tree.
+   * Uses the DEFAULT_THRESHOLD for parallelization
+   * @param pointValueTuples the point x value mappings the nodes will hold
+   * @tparam A The type of the values the nodes will hold
+   * @return a new KDTree of the assumed dimension
+   */
+  def apply[A](pointValueTuples : Seq[Product2[HyperPoint, A]]) : KDTree[A] = {
+    if (pointValueTuples.isEmpty)
+      throw new IllegalArgumentException("Cannot make any assumptions about the dimension of the KDTree")
+    else
+      KDTree[A](pointValueTuples.head._1.dim ,pointValueTuples)
+  }
+
+  def empty[A](dim : Int) : KDTree[A] = new KDTree[A](dim, Nil, 0)
+}
