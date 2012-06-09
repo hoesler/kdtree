@@ -26,124 +26,44 @@ abstract class TestCase extends Benchmark {
   }
 }
 
+class ConstructionBenchmark(title: String, n: Int, val dim: Int, threshold: Int = 0) extends TestCase {
+  override def prefix = title + " KDtree Construction (dim=" + dim + ",threshold=" + t + ", #node=" + n + ")"
+
+  var points : Seq[Product2[HyperPoint, Any]] = null
+
+  def randomPoint() = HyperPoint(List.fill(dim) { Random.nextInt(10) + Random.nextDouble() })
+  def randomTuple() = (randomPoint(), 0)
+  def tuples() : Seq[Product2[HyperPoint, Any]] = List.fill(n) { randomTuple() }
+  override def preRun() { points = tuples() }
+
+  private val t = if (threshold == 0) KDTree.defaultThreshold(n) else threshold
+
+  def run() {new KDTree(dim, points, t)}
+}
+
 object PerformanceTest {
-  val N = 10000
-  val dim = 2
-
-  val points = List.fill(N)(HyperPoint(List.fill(dim)(Random.nextInt(10) + Random.nextDouble())))
-  val tree = KDTree[Int](dim, points.map(e => (e, 0)))
-
-  var searchPoints : List[HyperPoint] = null
-
-  val kdtreeBenchmark100 = new TestCase {
-    override def prefix = "KDtree Construction (threshold=100, #node=" + N + ")"
-
-    var myPoints : List[HyperPoint] = null
-    override def preRun() {
-      myPoints = List.fill(N)(HyperPoint(List.fill(dim)(Random.nextInt(10) + Random.nextDouble())))
-    }
-    def run() {new KDTree(dim, points.map(e => (e, 0)), 100)}
-  }
-
-  val kdtreeBenchmark500 = new TestCase {
-    override def prefix = "KDtree Construction (threshold=500, #node=" + N + ")"
-
-    var myPoints : List[HyperPoint] = null
-    override def preRun() {
-      myPoints = List.fill(N)(HyperPoint(List.fill(dim)(Random.nextInt(10) + Random.nextDouble())))
-    }
-    def run() {new KDTree(dim, points.map(e => (e, 0)), 500)}
-  }
-
-  val kdtreeBenchmark1000 = new TestCase {
-    override def prefix = "KDtree Construction (threshold=1000, #node=" + N + ")"
-
-    var myPoints : List[HyperPoint] = null
-    override def preRun() {
-      myPoints = List.fill(N)(HyperPoint(List.fill(dim)(Random.nextInt(10) + Random.nextDouble())))
-    }
-    def run() {new KDTree(dim, points.map(e => (e, 0)), 1000)}
-  }
-
-  val kdtreeBenchmark5000 = new TestCase {
-    override def prefix = "KDtree Construction (threshold=5000, #node=" + N + ")"
-
-    var myPoints : List[HyperPoint] = null
-    override def preRun() {
-      myPoints = List.fill(N)(HyperPoint(List.fill(dim)(Random.nextInt(10) + Random.nextDouble())))
-    }
-    def run() {new KDTree(dim, points.map(e => (e, 0)), 5000)}
-  }
-
-  val kdtreeBenchmark10000 = new TestCase {
-    override def prefix = "KDtree Construction (threshold=10000, #node=" + N + ")"
-
-    var myPoints : List[HyperPoint] = null
-    override def preRun() {
-      myPoints = List.fill(N)(HyperPoint(List.fill(dim)(Random.nextInt(10) + Random.nextDouble())))
-    }
-    def run() {new KDTree(dim, points.map(e => (e, 0)), 10000)}
-  }
-
-  val kdtreeBenchmarkDefault = new TestCase {
-    override def prefix = "KDtree Construction (threshold=default, #node=" + N + ")"
-
-    var myPoints : List[HyperPoint] = null
-    override def preRun() {
-      myPoints = List.fill(N)(HyperPoint(List.fill(dim)(Random.nextInt(10) + Random.nextDouble())))
-    }
-    def run() {KDTree(dim, points.map(e => (e, 0)))}
-  }
-
-  val kdtreeBenchmarkSequential = new TestCase {
-    override def prefix = "KDtree Construction (threshold=Max, #node=" + N + ")"
-
-    var myPoints : List[HyperPoint] = null
-    override def preRun() {
-      myPoints = List.fill(N)(HyperPoint(List.fill(dim)(Random.nextInt(10) + Random.nextDouble())))
-    }
-    def run() { new KDTree(dim, points.map(e => (e, 0)), Int.MaxValue)}
-  }
-
-  val findNeighboursImmutableBenchmark = new TestCase {
-    override def prefix = "findNeighbours (radius=" + radius + ", treeSize=" + N + ")"
-    var nnList : List[NNResult[Int]] = Nil
-    var radius : Double = 1
-    var iter : Iterator[HyperPoint] = null
-
-    override def setUp() { iter = searchPoints.iterator }
-    override def preRun() { assert(iter != null && iter.hasNext) }
-    def run() {nnList = tree.filterRange(iter.next(), radius)}
-    override def postRun() {}
-  }
 
   def median(list: List[Long]) = list.sorted.apply(list.size / 2)
 
   def main(args : Array[String]) {
-    require(args.size == 2,
-      "Usage: PerformanceTest <runs> <serachRange>")
+    require(args.size == 3,
+      "Usage: PerformanceTest <runs> <dim> <size>")
 
     println("Starting PerformanceTest")
 
     val runs = args(0).toInt
-    searchPoints = List.fill(runs)(HyperPoint(List.fill(dim)(Random.nextDouble())))
-
-    //    nnSearchBenchmark.radius = args(1).toDouble
-    //    findNeighboursMutableBenchmark.radius = args(1).toDouble
-    findNeighboursImmutableBenchmark.radius = args(1).toDouble
-
+    val dim = args(1).toInt
+    val size = args(2).toInt
 
     println("min, max, median [us] (runs=" + runs + ")")
     for (testCase <- List[TestCase](
-      //      kdtreeBenchmark100,
-      //      kdtreeBenchmark500,
-      //      kdtreeBenchmark1000,
-      //      kdtreeBenchmark5000,
-      //      kdtreeBenchmark10000,
-      //      kdtreeBenchmarkDefault,
-      //      kdtreeBenchmarkSequential
-      //      reportNodes2Benchmark,
-      //      findNeighboursImmutableBenchmark
+      new ConstructionBenchmark("Threshold 1000", size, dim, 1000),
+      new ConstructionBenchmark("Threshold 2000", size, dim, 2000),
+      new ConstructionBenchmark("Threshold MAX", size, dim, Int.MaxValue),
+      new ConstructionBenchmark("LinearSeq", size, dim),
+      new ConstructionBenchmark("IndexedSeq", size, dim) {
+        override def tuples = super.tuples().toIndexedSeq
+      }
     ))
     {
       println(" - " + testCase.prefix + ": ")

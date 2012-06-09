@@ -6,6 +6,7 @@ import scala._
 
 class KDTree[+A](val dim : Int, pointValueInput : Seq[Product2[HyperPoint, A]], forkJoinThreshold : Int) extends HyperObject {
 
+  require(dim > 0, "Dimension must be > 0")
   require(pointValueInput != null, "Argument 'pointValueTuples' must not be null")
 
   /** The size of this tree which is the number of nodes accessible via root
@@ -57,7 +58,7 @@ class KDTree[+A](val dim : Int, pointValueInput : Seq[Product2[HyperPoint, A]], 
         )
     }
 
-    if (dim == 0) null else append(pointValueInput)
+    append(pointValueInput)
   }
 
   def filterRange(origin : HyperPoint, range : Double) : List[NNResult[A]] =
@@ -173,8 +174,10 @@ class KDTree[+A](val dim : Int, pointValueInput : Seq[Product2[HyperPoint, A]], 
 
 object KDTree {
 
+  def defaultThreshold(size: Int) = math.max(size, 1000) / Runtime.getRuntime.availableProcessors
+
   def apply[A](dim: Int, pointValueTuples : Seq[Product2[HyperPoint, A]]) : KDTree[A] = {
-    new KDTree[A](dim, pointValueTuples, math.max(pointValueTuples.size, 1000) / Runtime.getRuntime.availableProcessors)
+    new KDTree[A](dim, pointValueTuples, defaultThreshold(pointValueTuples.length))
   }
 
   /**
