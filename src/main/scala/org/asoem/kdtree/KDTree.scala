@@ -26,7 +26,7 @@ class KDTree[+A](val dim : Int, pointValueInput : Seq[Product2[HyperPoint, A]], 
     def createTree(sublist : Seq[Product2[HyperPoint, A]], depth : Int = 0) : KDNode[A] = sublist.length match {
       case 0 => null
 
-      case 1 => new LeafNode(sublist.head._1, sublist.head._2, splitAxisFunction(depth))
+      case 1 => LeafNode(sublist.head._1, sublist.head._2, splitAxisFunction(depth))
 
       case sublistLength =>
 
