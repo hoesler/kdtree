@@ -2,7 +2,7 @@ apply plugin: 'scala'
 apply plugin: 'maven'
 
 group="org.asoem"
-version="1.1.0"
+version="1.2.0"
 
 repositories {
     mavenLocal()
@@ -11,12 +11,20 @@ repositories {
 
 dependencies {
     // Libraries needed to run the scala tools
-    scalaTools 'org.scala-lang:scala-compiler:2.9.2'
-    scalaTools 'org.scala-lang:scala-library:2.9.2'
+    scalaTools 'org.scala-lang:scala-compiler:2.10.0'
+    scalaTools 'org.scala-lang:scala-library:2.10.0'
 
     // Libraries needed for scala api
-    compile 'org.scala-lang:scala-library:2.9.2'
-    testCompile 'org.scalatest:scalatest_2.9.2:1.7.2', "junit:junit:4.10"
+    compile 'org.scala-lang:scala-library:2.10.0'
+    testCompile 'org.scalatest:scalatest_2.10:1.9.1', "junit:junit:4.11"
+}
+
+compileScala {
+    compileScala.scalaCompileOptions.additionalParameters = ['-target:jvm-1.6 -feature']
+}
+
+compileTestScala {
+    compileTestScala.scalaCompileOptions.additionalParameters = ['-target:jvm-1.6']
 }
 
 task scalatest(dependsOn: testClasses) << {

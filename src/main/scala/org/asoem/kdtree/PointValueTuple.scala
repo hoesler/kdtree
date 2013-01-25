@@ -3,6 +3,7 @@ package org.asoem.kdtree
 trait PointValueTuple[+A] extends Product2[HyperPoint, A] {
   def point: HyperPoint
   def value : A
+  def dim = point.dim
 
   override def _1 = point
   override def _2 = value

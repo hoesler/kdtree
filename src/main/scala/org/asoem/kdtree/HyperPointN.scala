@@ -1,4 +1,4 @@
-package org.asoem.kdtree;
+package org.asoem.kdtree
 
 import scala.collection.JavaConversions.iterableAsScalaIterable
 import annotation.tailrec
@@ -8,8 +8,8 @@ case class HyperPointN(coordinates : List[Double]) extends HyperPoint {
   require(coordinates != null)
 
   def this(point : HyperPoint) = this(point.coordinates)
-  def this(coordinates : Double*) = this(coordinates toList)
-  def this(coordinates : Traversable[Double]) = this(coordinates toList)
+  def this(coordinates : Double*) = this(coordinates.toList)
+  def this(coordinates : Traversable[Double]) = this(coordinates.toList)
   def this(coordinates : java.lang.Iterable[Double]) = this(iterableAsScalaIterable(coordinates))
 
   def apply(idx : Int) : Double = coordinates(idx)

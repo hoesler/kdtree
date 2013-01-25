@@ -10,11 +10,14 @@ object KDNode {
     apply(point, value, splitDim, (left, right))
   }
 
-  def apply[A](point: HyperPoint, value : A, splitDim: Int, children : Product2[KDNode[A], KDNode[A]]) : KDNode[A] = children match {
-    case (null, null) => new LeafNode(point, value, splitDim)
-    case (_, null) => new HalfBranchNode(point, value, splitDim, children._1)
-    case (null, _) => throw new AssertionError("A KD Tree has never a node with just a right child!")
-    case (_, _) => new FullBranchNode(point, value, splitDim, children._1, children._2)
+  def apply[A](point: HyperPoint, value : A, splitDim: Int, children : Product2[KDNode[A], KDNode[A]]) : KDNode[A] = {
+    require(children._1.dim == point.dim && children._2.dim == point.dim)
+    children match {
+      case (null, null) => new LeafNode(point, value, splitDim)
+      case (_, null) => new HalfBranchNode(point, value, splitDim, children._1)
+      case (null, _) => throw new AssertionError("A KD Tree has never a node with just a right child!")
+      case (_, _) => new FullBranchNode(point, value, splitDim, children._1, children._2)
+    }
   }
 }
 

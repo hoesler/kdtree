@@ -1,8 +1,10 @@
 package org.asoem.kdtree
 
-import scala.actors.Futures._
-import scala.collection.mutable.LinkedList
+import scala.concurrent._
+import scala.concurrent.duration._
+import ExecutionContext.Implicits.global
 import scala._
+import collection.mutable
 
 class KDTree[+A](val dim : Int, pointValueInput : Seq[Product2[HyperPoint, A]], forkJoinThreshold : Int) extends HyperObject {
 
@@ -10,55 +12,55 @@ class KDTree[+A](val dim : Int, pointValueInput : Seq[Product2[HyperPoint, A]], 
   require(pointValueInput != null, "Argument 'pointValueTuples' must not be null")
 
   /** The size of this tree which is the number of nodes accessible via root
-   *
-   */
+    *
+    */
   val size = pointValueInput.length
 
   /** The root node
-   *
-   */
+    *
+    */
   val root = {
 
     val splitAxisFunction = if (dim == 2) (depth:Int) => {depth & 1} else (depth:Int) => {depth % dim}
 
-    def checkDim(node : KDNode[A]) : KDNode[A] = {
-      if (node.point.dim != this.dim)
-        throw new IllegalArgumentException("Point has differing dimension: " + node.point.dim + " != " + this.dim)
-      else
-        node
-    }
-
-    def append(sublist : Seq[Product2[HyperPoint, A]], depth : Int = 0) : KDNode[A] = sublist.length match {
+    def createTree(sublist : Seq[Product2[HyperPoint, A]], depth : Int = 0) : KDNode[A] = sublist.length match {
       case 0 => null
 
-      case 1 =>
-        checkDim(new LeafNode(sublist.head._1, sublist.head._2, splitAxisFunction(depth)))
+      case 1 => new LeafNode(sublist.head._1, sublist.head._2, splitAxisFunction(depth))
 
       case sublistLength =>
 
         val axis = splitAxisFunction(depth)
         val indexOfSplit = sublistLength / 2
         val (left, rightWithMedian) = sublist.sortWith(_._1(axis) < _._1(axis)).splitAt(indexOfSplit)
-
         val newDepth: Int = depth + 1
-        val appendLeft = () => append(left, newDepth)
-        val appendRight = () => append(rightWithMedian.tail, newDepth)
 
-        val doFork = (sublistLength > forkJoinThreshold)
-        val resultLeft = if (doFork) future{appendLeft()} else appendLeft
-        val resultRight = if (doFork) future{appendRight()} else appendRight
+        if (sublistLength > forkJoinThreshold) {
+          val resultLeft = future {createTree(left, newDepth)}
+          val resultRight = future {createTree(rightWithMedian.tail, newDepth)}
 
-        checkDim(
+          Await.result(for {
+            leftNode <- resultLeft
+            rightNode <- resultRight
+          } yield
+            KDNode(
+              rightWithMedian.head,
+              axis,
+              leftNode,
+              rightNode
+            )
+            , Duration.Inf)
+        } else {
           KDNode(
             rightWithMedian.head,
             axis,
-            resultLeft(),
-            resultRight()
+            createTree(left, newDepth),
+            createTree(rightWithMedian.tail, newDepth)
           )
-        )
+        }
     }
 
-    append(pointValueInput)
+    createTree(pointValueInput)
   }
 
   def filterRange(origin : HyperPoint, range : Double) : List[NNResult[A]] =
@@ -119,8 +121,8 @@ class KDTree[+A](val dim : Int, pointValueInput : Seq[Product2[HyperPoint, A]], 
     if (k == 0)
       return Nil
 
-    var resultList = LinkedList[NNResult[A]]()
-    var farNode = LinkedList[NNResult[A]]()
+    var resultList = mutable.LinkedList[NNResult[A]]()
+    var farNode = mutable.LinkedList[NNResult[A]]()
 
     def search(node : KDNode[A]) {
       if (node == null)
@@ -143,7 +145,7 @@ class KDTree[+A](val dim : Int, pointValueInput : Seq[Product2[HyperPoint, A]], 
       val distanceToSearchPoint = searchPoint.distance(node.point)
       if (resultList.size < k) {
         val element = new NNResult(node, distanceToSearchPoint)
-        val list = LinkedList[NNResult[A]](element)
+        val list = mutable.LinkedList[NNResult[A]](element)
         resultList = resultList.append(list)
 
         if (farNode.isEmpty || (farNode.elem compare element) < 0)
