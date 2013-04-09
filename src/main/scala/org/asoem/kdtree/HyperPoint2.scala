@@ -1,4 +1,4 @@
-package org.asoem.kdtree;
+package org.asoem.kdtree
 
 import scala.math.{sqrt, pow}
 
@@ -35,7 +35,7 @@ case class HyperPoint2(x : Double, y : Double) extends HyperPoint {
     HyperPoint(this(0) - that(0), this(1) - that(1))
   }
   def +(that : HyperPoint) : HyperPoint = {
-    require(that.dim == 2);
+    require(that.dim == 2)
     HyperPoint(this(0) + that(0), this(1) + that(1))
   }
 }
