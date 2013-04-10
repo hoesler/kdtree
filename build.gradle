@@ -28,3 +28,68 @@ test << {
         reporter(type: 'stderr')
     }
 }
+
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'net.sf.proguard:proguard-gradle:4.9'
+    }
+}
+
+task standaloneJar(type: proguard.gradle.ProGuardTask) {
+    dependsOn jar
+
+    injars jar.archivePath
+    configurations.runtime.each { file ->
+        injars file.path
+    }
+    outjars 'out.jar'
+    libraryjars  '<java.home>/lib/rt.jar'
+
+    dontwarn 'scala.**'
+    verbose
+    dontobfuscate
+
+    keep 'class * implements org.xml.sax.EntityResolver'
+
+    keepclassmembers 'class * { \
+        ** MODULE$; \
+    }'
+
+    keepparameternames
+    renamesourcefileattribute 'SourceFile'
+    keepattributes 'Exceptions,InnerClasses,Signature,Deprecated, \
+    SourceFile,LineNumberTable,*Annotation*,EnclosingMethod'
+
+    keep 'public class org.asoem.kdtree.* { \
+        public protected *; \
+    }'
+
+    keepclassmembernames 'class scala.concurrent.forkjoin.ForkJoinPool { \
+        long ctl; \
+        long parkBlocker; \
+    }'
+
+    keepclassmembernames 'class scala.concurrent.forkjoin.ForkJoinPool$WorkQueue { \
+        int runState; \
+    }'
+
+    keepclassmembernames 'class scala.concurrent.forkjoin.LinkedTransferQueue { \
+        scala.concurrent.forkjoin.LinkedTransferQueue$Node head; \
+        scala.concurrent.forkjoin.LinkedTransferQueue$Node tail; \
+        int sweepVotes; \
+    }'
+
+    keepclassmembernames 'class scala.concurrent.forkjoin.LinkedTransferQueue$Node { \
+        scala.concurrent.forkjoin.LinkedTransferQueue$Node next; \
+        java.lang.Object item; \
+        java.lang.Thread waiter; \
+    }'
+
+    keep 'class scala.collection.concurrent.Gen'
+
+    keep 'class scala.collection.concurrent.MainNode'
+}
