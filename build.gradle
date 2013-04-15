@@ -1,3 +1,5 @@
+import org.apache.tools.ant.taskdefs.condition.Os
+
 apply plugin: 'scala'
 apply plugin: 'maven'
 
@@ -39,19 +41,22 @@ buildscript {
     }
 }
 
-task standaloneJar(type: proguard.gradle.ProGuardTask) {
+task standaloneProguard(type: proguard.gradle.ProGuardTask) {
     dependsOn jar
+    ext.destFile = File.createTempFile('proguard', '.jar', temporaryDir)
 
     injars jar.archivePath
     configurations.runtime.each { file ->
-        injars file.path
+        injars file.path, filter: '!META-INF/MANIFEST.MF'
     }
-    outjars 'out.jar'
-    libraryjars  '<java.home>/lib/rt.jar'
+    outjars destFile.absolutePath
+    libraryjars Os.isFamily(Os.FAMILY_MAC) ? '<java.home>/../Classes/classes.jar' : '<java.home>/lib/rt.jar'
 
     dontwarn 'scala.**'
     verbose
     dontobfuscate
+    dontoptimize
+    forceprocessing
 
     keep 'class * implements org.xml.sax.EntityResolver'
 
@@ -89,7 +94,34 @@ task standaloneJar(type: proguard.gradle.ProGuardTask) {
         java.lang.Thread waiter; \
     }'
 
+    // descriptor classes
     keep 'class scala.collection.concurrent.Gen'
-
     keep 'class scala.collection.concurrent.MainNode'
+    keep 'class scala.Function0'
+    keep 'class scala.Function1'
+    keep 'class scala.collection.immutable.List'
+    keep 'class scala.collection.Seq'
+    keep 'class scala.Product2'
+    keep 'class scala.collection.Traversable'
+    keep 'class scala.runtime.ObjectRef'
+    keep 'class scala.concurrent.Future'
+
+    // keep scala conversion functions
+    keep 'class scala.collection.JavaConversions'
+
+    // keep only manifest of kdtree
+}
+
+configurations {
+    standalone
+}
+
+task standaloneJar(type: Jar) {
+    dependsOn standaloneProguard
+    from zipTree(standaloneProguard.destFile)
+    appendix "standalone"
+}
+
+artifacts {
+    standalone standaloneJar
 }
