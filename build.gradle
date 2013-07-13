@@ -31,6 +31,14 @@ test << {
     }
 }
 
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}
+
 buildscript {
     repositories {
         mavenLocal()
