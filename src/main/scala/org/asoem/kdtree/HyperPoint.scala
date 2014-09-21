@@ -35,8 +35,13 @@ object HyperPoint {
   def max(dim: Int): HyperPoint = fill(dim, () => Double.MaxValue)
 
   def fill[A](dim: Int, f: () => Double): HyperPoint = dim match {
+    case 1 => HyperPoint(f())
     case 2 => HyperPoint(f(), f())
     case _ => HyperPoint(List.fill(dim)(f()))
+  }
+
+  def apply(c1: Double): HyperPoint = {
+    new HyperPoint1(c1)
   }
 
   def apply(c1: Double, c2: Double): HyperPoint = {
@@ -48,6 +53,7 @@ object HyperPoint {
   }
 
   def apply(coords: Double*): HyperPoint = coords.length match {
+    case 1 => new HyperPoint1(coords(0))
     case 2 => new HyperPoint2(coords(0), coords(1))
     case _ => new HyperPointN(coords)
   }
