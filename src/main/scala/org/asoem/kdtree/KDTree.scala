@@ -1,12 +1,11 @@
 package org.asoem.kdtree
 
+import scala.collection.mutable
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
-import ExecutionContext.Implicits.global
-import scala._
-import collection.mutable
 
-class KDTree[+A](val dim : Int, pointValueInput : Seq[Product2[HyperPoint, A]], forkJoinThreshold : Int) extends HyperObject {
+class KDTree[A](val dim: Int, pointValueInput: Seq[Product2[HyperPoint, A]], forkJoinThreshold: Int) extends HyperObject {
 
   require(dim > 0, "Dimension must be > 0")
   require(pointValueInput != null, "Argument 'pointValueTuples' must not be null")
