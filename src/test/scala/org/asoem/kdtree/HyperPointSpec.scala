@@ -1,23 +1,41 @@
 package org.asoem.kdtree
 
-import org.scalatest.FlatSpec
-import org.scalatest.junit.JUnitRunner
 import org.junit.runner.RunWith
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.junit.JUnitRunner
+import org.scalatest.{FlatSpec, Matchers}
 
-import scala.math.{sqrt, pow}
+import scala.math.{pow, sqrt}
 
-/**
- * User: christoph
- * Date: 16.02.11
- * Time: 11:19
- */
 @RunWith(classOf[JUnitRunner])
-class HyperPointSpec extends FlatSpec with ShouldMatchers {
+class HyperPointSpec extends FlatSpec with Matchers {
+
+  "A HyperPointN" can "be created using Varargs" in {
+    val point = HyperPoint(0.0)
+
+    point shouldBe a[HyperPointN]
+  }
+
+  "A HyperPoint2" can "be created using Varargs" in {
+    val point = HyperPoint(0.0, 0.0)
+
+    point shouldBe a[HyperPoint2]
+  }
+
+  "A HyperPoint2" can "be created using an Array" in {
+    val point = HyperPoint(Array(0.0, 0.0))
+
+    point shouldBe a[HyperPoint2]
+  }
+
+  "A HyperPoint2" can "be created using a List" in {
+    val point = HyperPoint(List(0.0, 0.0))
+
+    point shouldBe a[HyperPoint2]
+  }
 
   "Two HyperPoint objects" can "be equal" in {
-    val point1 = HyperPoint(0,0)
-    val point2 = HyperPoint(0,0)
+    val point1 = HyperPoint(0, 0)
+    val point2 = HyperPoint(0, 0)
 
     assert(point1 == point2, "%s is not equal to %s".format(point1, point2))
   }

@@ -45,10 +45,10 @@ class KDTree[A](val dim: Int, pointValueInput: Seq[Product2[HyperPoint, A]], for
         require(current._1.dim == dim, "Dimension mismatch")
 
         if (sublistLength > forkJoinThreshold) {
-          val resultLeft = future {
+          val resultLeft = Future {
             createTree(left, newDepth)
           }
-          val resultRight = future {
+          val resultRight = Future {
             createTree(rightWithMedian.tail, newDepth)
           }
 
