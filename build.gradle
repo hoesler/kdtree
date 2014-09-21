@@ -3,8 +3,8 @@ import proguard.gradle.ProGuardTask
 apply plugin: 'scala'
 apply plugin: "maven-publish"
 
-group="org.asoem"
-version = "1.2.3"
+group = "org.asoem"
+version = "1.2.4"
 
 repositories {
     mavenLocal()
