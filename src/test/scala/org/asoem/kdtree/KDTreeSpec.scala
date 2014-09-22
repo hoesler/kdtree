@@ -14,15 +14,22 @@ class KDTreeSpec extends FlatSpec with Matchers {
     HyperPoint(4, 7),
     HyperPoint(8, 1),
     HyperPoint(7, 2))
-  val tree = KDTree(points.map(e => (e, 0)))
 
+  "A KDTree" can "be constructed" in {
+    val tree: KDTree[Int] = KDTree(points.map(e => (e, 0)))
 
-  "A KDTree" should "contain corect number of keys after construction" in {
+    tree shouldNot be(null)
+  }
+
+  it should "contain corect number of keys after construction" in {
+    val tree = KDTree(points.map(e => (e, 0)))
+
     assert(tree.size == points.size,
       tree.size + " != " + points.size)
   }
 
   it can "be searched for the nearest neighbours to a given point" in {
+    val tree = KDTree(points.map(e => (e, 0)))
     val nodeList1 = tree.findNeighbours(HyperPoint(9.1, 6.1), k = 1) map (e => e.point)
     val expected1 = List[HyperPoint](points(2))
     assert(nodeList1.sameElements(expected1),
@@ -30,6 +37,7 @@ class KDTreeSpec extends FlatSpec with Matchers {
   }
 
   it should "find an existing node by it's key" in {
+    val tree = KDTree(points.map(e => (e, 0)))
     val expected = points(0)
     val resultList = tree.findNeighbours(expected, 1)
     assert(resultList.size == 1 && resultList.head.point == expected,
@@ -37,10 +45,11 @@ class KDTreeSpec extends FlatSpec with Matchers {
   }
 
   it should "handle duplicates" in {
+    val tree = KDTree(points.map(e => (e, 0)))
     val points_with_dup = HyperPoint(7, 2) :: points
     val tree_with_dup = KDTree(points_with_dup.map(e => (e, 0)))
 
-    val resultList = tree_with_dup.filterRange(HyperPoint(7, 2), 1.5)
+    val resultList = tree_with_dup.filterRange(HyperSphere(HyperPoint(7, 2), 1.5))
     val resultListPoints = resultList.map(e => e.point)
 
     val expected = List[HyperPoint](points_with_dup(0), points_with_dup(6), points_with_dup(5))

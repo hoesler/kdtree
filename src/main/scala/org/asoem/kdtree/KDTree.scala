@@ -5,7 +5,17 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
 
-class KDTree[A](val dim: Int, pointValueInput: Seq[Product2[HyperPoint, A]], forkJoinThreshold: Int) extends HyperObject {
+/**
+ * A KD-Tree implementation
+ *
+ * Tree construction is done in less than O([k-1]n log n)
+ * @param dim the dimension of the points in tree nodes
+ * @param pointValueInput a sequence of point x value pairs to construct the tree from
+ * @param forkJoinThreshold the threshold above which the construction will be done asynchronously
+ * @tparam A the type of values the nodes will hold
+ */
+final class KDTree[A](val dim: Int, pointValueInput: Seq[Product2[HyperPoint, A]], forkJoinThreshold: Int)
+  extends Tree[KDNode[A]] with Immutable {
 
   require(dim > 0, "Dimension must be > 0")
   require(pointValueInput != null, "Argument 'pointValueInput' must not be null")
@@ -26,13 +36,13 @@ class KDTree[A](val dim: Int, pointValueInput: Seq[Product2[HyperPoint, A]], for
       depth % dim
     }
 
-    def createTree(sublist: Seq[Product2[HyperPoint, A]], depth: Int = 0): KDNode[A] = sublist.length match {
-      case 0 => null
+    def createTree(sublist: Seq[Product2[HyperPoint, A]], depth: Int = 0): Option[KDNode[A]] = sublist.length match {
+      case 0 => Option.empty
 
       case 1 =>
         val head: Product2[HyperPoint, A] = sublist.head
         require(head._1.dim == dim, "Dimension mismatch")
-        LeafNode(head._1, head._2, splitAxisFunction(depth))
+        Some(LeafNode(head._1, head._2, splitAxisFunction(depth)))
 
       case sublistLength =>
 
@@ -44,7 +54,7 @@ class KDTree[A](val dim: Int, pointValueInput: Seq[Product2[HyperPoint, A]], for
         val current: Product2[HyperPoint, A] = rightWithMedian.head
         require(current._1.dim == dim, "Dimension mismatch")
 
-        if (sublistLength > forkJoinThreshold) {
+        val node: KDNode[A] = if (sublistLength > forkJoinThreshold) {
           val resultLeft = Future {
             createTree(left, newDepth)
           }
@@ -71,45 +81,76 @@ class KDTree[A](val dim: Int, pointValueInput: Seq[Product2[HyperPoint, A]], for
             createTree(rightWithMedian.tail, newDepth)
           )
         }
+
+        Option(node)
     }
 
     createTree(pointValueInput)
   }
 
-  def filterRange(origin: HyperPoint, range: Double): List[NNResult[A]] =
-    filterRange(new HyperSphere(origin, range))
+  /**
+   * Filter all Nodes whose point is contained by the given Shape.
+   *
+   * The complexity of this algorithm is O(N)
+   * @param shape the Shape that defines the search range
+   * @return a list of NNResult objects
+   */
+  def filterRange(shape: Shape): List[KDNode[A]] = {
+    require(shape != null, "shape must not be null")
 
-  def filterRange(range: HyperSphere): List[NNResult[A]] = {
-    require(range != null, "Argument 'range' must not be null")
-    require(range.dim == dim, "Dimension of 'searchPoint' (%d) does not match dimension of this tree (%d).".format(range.dim, dim))
+    def search(nodeOption: Option[KDNode[A]]): List[KDNode[A]] = nodeOption match {
+      case None => Nil
 
-    def search(node: KDNode[A]): List[NNResult[A]] = node match {
-      case null => Nil
+      case Some(node) =>
+        val prefix =
+          if (shape.contains(node.point))
+            List(node)
+          else Nil
 
-      case x: LeafNode[_] =>
-        val dist = range.origin.distance(node.point)
-        if (dist <= range.radius)
-          List(new NNResult(node, dist))
-        else Nil
+        val postfix = if (!node.isLeaf) {
+          search(node.leftChild) ::: search(node.rightChild) // TODO: Can this be optimized?
+        }
+        else
+          Nil
 
-      case _ =>
-        val dist = range.origin.distance(node.point)
+        prefix ::: postfix
+    }
+
+    search(root)
+  }
+
+  /**
+   * Filter all Nodes whose point is contained by the given HyperSphere.
+   *
+   * The complexity of this algorithm is O(log N)
+   * @param sphere the HyperSphere that defines the search range
+   * @return a list of NNResult objects
+   */
+  def filterRange(sphere: HyperSphere): List[NNResult[A]] = {
+    require(sphere != null, "Argument 'range' must not be null")
+    require(sphere.dim == dim, "Dimension of 'searchPoint' (%d) does not match dimension of this tree (%d).".format(sphere.dim, dim))
+
+    def search(nodeOption: Option[KDNode[A]]): List[NNResult[A]] = nodeOption match {
+      case None => Nil
+
+      case Some(node) =>
+        val dist = sphere.origin.distance(node.point)
 
         val prefix =
-          if (dist <= range.radius)
+          if (dist <= sphere.radius)
             List(new NNResult(node, dist))
           else Nil
 
         val postfix = if (!node.isLeaf) {
-          val distance = range.origin(node.splitDim) - node.point(node.splitDim)
-          val closeChild = if (distance <= 0) node.left else node.right
-          val farChild = if (distance <= 0) node.right else node.left
+          val distance = sphere.origin(node.splitDim) - node.point(node.splitDim)
+          val closeChild = if (distance <= 0) node.leftChild else node.rightChild
+          val farChild = if (distance <= 0) node.rightChild else node.leftChild
 
           // search in the HyperRect containing searchPoint
-          val resultCloseChild = search(closeChild)
+          val resultCloseChild = search(closeChild) // TODO: is the close child always contained by the sphere?
 
           val resultFarChild =
-            if (math.abs(distance) <= range.radius)
+            if (math.abs(distance) <= sphere.radius)
               search(farChild)
             else
               Nil
@@ -137,27 +178,27 @@ class KDTree[A](val dim: Int, pointValueInput: Seq[Product2[HyperPoint, A]], for
     var resultList = mutable.LinkedList[NNResult[A]]()
     var farNode = mutable.LinkedList[NNResult[A]]()
 
-    def search(node: KDNode[A]) {
-      if (node == null)
+    def search(node: Option[KDNode[A]]) {
+      if (node.isEmpty)
         return
 
-      if (!node.isLeaf) {
-        val translationInSplitDim = searchPoint(node.splitDim) - node.point(node.splitDim)
-        val closeChild = if (translationInSplitDim <= 0) node.left else node.right
-        val farChild = if (translationInSplitDim <= 0) node.right else node.left
+      if (!node.get.isLeaf) {
+        val translationInSplitDim = searchPoint(node.get.splitDim) - node.get.point(node.get.splitDim)
+        val closeChild = if (translationInSplitDim <= 0) node.get.leftChild else node.get.rightChild
+        val farChild = if (translationInSplitDim <= 0) node.get.rightChild else node.get.leftChild
 
         // search in the HyperRect containing searchPoint
         search(closeChild)
 
         // search in the HyperRect not containing searchPoint
         // if it intersects with searchRange
-        if (farNode.isEmpty || new HyperSphere(searchPoint, farNode.elem.distance).contains(farChild.point))
+        if (farNode.isEmpty || new HyperSphere(searchPoint, farNode.elem.distance).contains(farChild.get.point))
           search(farChild)
       }
 
-      val distanceToSearchPoint = searchPoint.distance(node.point)
+      val distanceToSearchPoint = searchPoint.distance(node.get.point)
       if (resultList.size < k) {
-        val element = new NNResult(node, distanceToSearchPoint)
+        val element = new NNResult(node.get, distanceToSearchPoint)
         val list = mutable.LinkedList[NNResult[A]](element)
         resultList = resultList.append(list)
 
@@ -165,7 +206,7 @@ class KDTree[A](val dim: Int, pointValueInput: Seq[Product2[HyperPoint, A]], for
           farNode = list
       }
       else if (distanceToSearchPoint < farNode.elem.distance) {
-        val element = new NNResult(node, distanceToSearchPoint)
+        val element = new NNResult(node.get, distanceToSearchPoint)
         farNode.elem = element
       }
     }
@@ -173,17 +214,6 @@ class KDTree[A](val dim: Int, pointValueInput: Seq[Product2[HyperPoint, A]], for
     search(root)
 
     resultList.toList
-  }
-
-  override lazy val boundingBox = {
-    var min = HyperPoint.zero(dim)
-    var max = HyperPoint.zero(dim)
-    for (i <- 0 to dim - 1) {
-      val sorted = pointValueInput.sortWith((e1, e2) => e1._1(i) < e2._1(i))
-      min = min.edit(i, math.min(min(i), sorted.head._1(i)))
-      max = max.edit(i, math.max(max(i), sorted.last._1(i)))
-    }
-    HyperRect(min, max)
   }
 }
 

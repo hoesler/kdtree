@@ -9,8 +9,14 @@ import scala.math.{pow, sqrt}
 @RunWith(classOf[JUnitRunner])
 class HyperPointSpec extends FlatSpec with Matchers {
 
-  "A HyperPointN" can "be created using Varargs" in {
+  "A HyperPoint1" can "be created using Varargs" in {
     val point = HyperPoint(0.0)
+
+    point shouldBe a[HyperPoint1]
+  }
+
+  "A HyperPointN" can "be created using Varargs" in {
+    val point = HyperPoint(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
     point shouldBe a[HyperPointN]
   }

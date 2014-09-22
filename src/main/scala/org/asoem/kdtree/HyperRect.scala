@@ -1,8 +1,8 @@
 package org.asoem.kdtree
 
-import annotation.tailrec
+import scala.annotation.tailrec
 
-case class HyperRect(min : HyperPoint, max : HyperPoint) extends HyperObject {
+final case class HyperRect(min: HyperPoint, max: HyperPoint) extends Shape {
   require(min != null)
   require(max != null)
   require(min.dim == max.dim,
@@ -10,54 +10,54 @@ case class HyperRect(min : HyperPoint, max : HyperPoint) extends HyperObject {
   require(min.coordinates.corresponds(max.coordinates)(_ <= _),
     "The coordinates of min must be smaller or equal to the corresponding coordinates of max")
 
-  lazy val centerPoint =  min + (max - min) / 2
-  def center() : HyperPoint = centerPoint
+  lazy val centerPoint = min + (max - min) / 2
+
+  def center(): HyperPoint = centerPoint
 
   override def dim = min.dim
 
-  def contains(point : HyperPoint) : Boolean = {
+  override def contains(point: HyperPoint): Boolean = {
     @tailrec
-    def checkAxis(axis : Int) : Boolean = axis match {
+    def checkAxis(axis: Int): Boolean = axis match {
       case 0 => true
-      case x => {
+      case x =>
         val dimToCheck = x - 1
         min(dimToCheck) <= point(dimToCheck) &&
-        max(dimToCheck) >= point(dimToCheck) &&
-        checkAxis(dimToCheck)
-      }
+          max(dimToCheck) >= point(dimToCheck) &&
+          checkAxis(dimToCheck)
     }
     checkAxis(dim)
   }
 
-  def contains(that : HyperRect) : Boolean = {
+  def contains(that: HyperRect): Boolean = {
     contains(that.min) && contains(that.max)
   }
 
-  def contains(that : HyperSphere) : Boolean = {
+  def contains(that: HyperSphere): Boolean = {
     (min.coordinates, that.origin.coordinates).zipped.forall(_ <= _ - that.radius) &&
       (max.coordinates, that.origin.coordinates).zipped.forall(_ >= _ + that.radius)
   }
 
-  def intersects(that : HyperSphere) : Boolean = {
-    (this contains that.origin)  // TODO: implement
+  def intersects(that: HyperSphere): Boolean = {
+    this contains that.origin // TODO: implement
   }
 
-  def intersects(that : HyperRect) : Boolean = {
+  def intersects(that: HyperRect): Boolean = {
     this.contains(that.min) || this.contains(that.max) ||
       that.contains(min) || that.contains(max)
   }
 
-  def intersection(that : HyperRect) : HyperRect = {
+  def intersection(that: HyperRect): HyperRect = {
     if (this intersects that) {
-      val new_min = (min.coordinates, that.min.coordinates).zipped.map(math.max(_, _))
-      val new_max = (max.coordinates, that.max.coordinates).zipped.map(math.min(_, _))
+      val new_min = (min.coordinates, that.min.coordinates).zipped.map(math.max)
+      val new_max = (max.coordinates, that.max.coordinates).zipped.map(math.min)
       return HyperRect(HyperPoint(new_min), HyperPoint(new_max))
     }
 
     null
   }
 
-  def split(point : HyperPoint, splitDim : Int) : (HyperRect, HyperRect) = {
+  def split(point: HyperPoint, splitDim: Int): (HyperRect, HyperRect) = {
     if (this contains point) {
       val leftMax = max.edit(splitDim, point(splitDim))
       val rightMin = min.edit(splitDim, point(splitDim))
@@ -76,7 +76,7 @@ case class HyperRect(min : HyperPoint, max : HyperPoint) extends HyperObject {
 
 object HyperRect {
 
-  def max(dim : Int) : HyperRect = {
+  def max(dim: Int): HyperRect = {
     HyperRect(HyperPoint.min(dim), HyperPoint.max(dim))
   }
 }

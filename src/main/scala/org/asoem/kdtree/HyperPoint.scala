@@ -1,6 +1,6 @@
 package org.asoem.kdtree
 
-trait HyperPoint extends HyperObject {
+trait HyperPoint extends Shape {
 
   def distance(that: HyperPoint): Double
 
@@ -25,6 +25,13 @@ trait HyperPoint extends HyperObject {
   def -(that: HyperPoint): HyperPoint
 
   def +(that: HyperPoint): HyperPoint
+
+  override def contains(point: HyperPoint): Boolean = {
+    require(point != null)
+    if (point.dim > this.dim)
+      return false
+    coordinates.slice(0, point.dim - 1).equals(point.coordinates)
+  }
 }
 
 object HyperPoint {

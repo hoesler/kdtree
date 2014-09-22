@@ -4,7 +4,7 @@ import scala.annotation.tailrec
 import scala.collection.JavaConversions.iterableAsScalaIterable
 import scala.math.{pow, sqrt}
 
-case class HyperPointN(coordinates: List[Double]) extends HyperPoint {
+final case class HyperPointN(coordinates: List[Double]) extends HyperPoint {
   require(coordinates != null)
 
   def this(point: HyperPoint) = this(point.coordinates)
