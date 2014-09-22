@@ -22,7 +22,7 @@ object KDNode {
   }
 }
 
-sealed abstract class KDNode[+A] extends PointValueTuple[A] {
+sealed abstract class KDNode[+A] extends BinaryTreeNode[A] with PointValueTuple[A] {
   self =>
 
   def point: HyperPoint
@@ -31,17 +31,11 @@ sealed abstract class KDNode[+A] extends PointValueTuple[A] {
 
   def splitDim: Int
 
-  def leftChild: Option[KDNode[A]]
-
   @deprecated("Use leftChild.orNull instead", "1.2.6")
   def left = leftChild.orNull
 
-  def rightChild: Option[KDNode[A]]
-
   @deprecated("Use rightChild.orNull instead", "1.2.6")
   def right = rightChild.orNull
-
-  def isLeaf: Boolean
 
   def splitCoordinate = point(splitDim)
 

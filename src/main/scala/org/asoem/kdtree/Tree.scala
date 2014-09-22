@@ -1,5 +1,5 @@
 package org.asoem.kdtree
 
-trait Tree[A] {
+trait Tree[+A] {
   def root: Option[A]
 }
