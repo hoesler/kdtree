@@ -16,6 +16,8 @@
 
 package org.asoem.kdtree
 
+import scala.annotation.tailrec
+
 final case class HyperRect(min: HyperPoint, max: HyperPoint) extends Shape {
   require(min != null)
   require(max != null)

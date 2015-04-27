@@ -33,7 +33,7 @@ dependencies {
 }
 
 compileScala {
-    compileScala.scalaCompileOptions.additionalParameters = ['-target:jvm-1.6 -feature']
+    compileScala.scalaCompileOptions.additionalParameters = ['-target:jvm-1.6']
 }
 
 compileTestScala {

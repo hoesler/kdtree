@@ -16,6 +16,8 @@
 
 package org.asoem.kdtree
 
+import scala.math.abs
+
 final case class HyperPoint1(x: Double) extends HyperPoint {
 
   def distance(that: HyperPoint): Double = {

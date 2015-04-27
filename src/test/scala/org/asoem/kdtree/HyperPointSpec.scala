@@ -20,6 +20,8 @@ import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{FlatSpec, Matchers}
 
+import scala.math.{pow, sqrt}
+
 @RunWith(classOf[JUnitRunner])
 class HyperPointSpec extends FlatSpec with Matchers {
 

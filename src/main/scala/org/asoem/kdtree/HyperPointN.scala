@@ -16,6 +16,10 @@
 
 package org.asoem.kdtree
 
+import scala.annotation.tailrec
+import scala.collection.JavaConversions
+import scala.math.{pow, sqrt}
+
 final case class HyperPointN(coordinates: List[Double]) extends HyperPoint {
   require(coordinates != null)
 
@@ -27,7 +31,7 @@ final case class HyperPointN(coordinates: List[Double]) extends HyperPoint {
 
   def this(coordinates: Traversable[Double]) = this(coordinates.toList)
 
-  def this(coordinates: java.lang.Iterable[Double]) = this(iterableAsScalaIterable(coordinates))
+  def this(coordinates: java.lang.Iterable[Double]) = this(JavaConversions.iterableAsScalaIterable(coordinates))
 
   def apply(idx: Int): Double = coordinates(idx)
 

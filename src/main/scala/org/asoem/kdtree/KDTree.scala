@@ -16,6 +16,10 @@
 
 package org.asoem.kdtree
 
+import scala.collection.mutable
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future}
+
 /**
  * A KD-Tree implementation
  *
@@ -26,6 +30,7 @@ package org.asoem.kdtree
  * @tparam A the type of values the nodes will hold
  */
 final class KDTree[A](val dim: Int, pointValueInput: Seq[Product2[HyperPoint, A]], forkJoinThreshold: Int)
+                     (implicit xc: ExecutionContext = ExecutionContext.global)
   extends Tree[KDNode[A]] with Immutable {
 
   require(dim > 0, "Dimension must be > 0")
