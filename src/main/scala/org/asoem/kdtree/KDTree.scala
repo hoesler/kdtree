@@ -223,7 +223,7 @@ final class KDTree[A](val dim: Int, pointValueInput: Seq[Product2[HyperPoint, A]
       else if (distanceToSearchPoint < resultList.last.distance) {
         val element = new NNResult(node.get, distanceToSearchPoint)
         val insertAt = resultList.indexWhere(r => r.distance > distanceToSearchPoint)
-        resultList = (resultList.drop(insertAt) ::: element :: resultList.take(insertAt)).take(k)
+        resultList = (resultList.take(insertAt) ::: element :: resultList.drop(insertAt)).take(k)
       }
     }
 
