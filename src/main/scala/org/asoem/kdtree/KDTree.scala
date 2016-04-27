@@ -251,7 +251,7 @@ object KDTree {
    */
   def apply[A](pointValueTuples: Seq[Product2[HyperPoint, A]]): KDTree[A] = {
     if (pointValueTuples.isEmpty)
-      throw new IllegalArgumentException("Cannot make any assumptions about the dimension of the KDTree")
+      throw new IllegalArgumentException("Cannot derive tree dimension for an empty sequence")
     else
       KDTree[A](pointValueTuples.head._1.dim, pointValueTuples)
   }
