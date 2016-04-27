@@ -16,19 +16,19 @@
 
 package org.asoem.kdtree
 
-import scala.collection.mutable
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 /**
- * A KD-Tree implementation
- *
- * Tree construction is done in less than O([k-1]n log n)
- * @param dim the dimension of the points in tree nodes
- * @param pointValueInput a sequence of point x value pairs to construct the tree from
- * @param forkJoinThreshold the threshold above which the construction will be done asynchronously
- * @tparam A the type of values the nodes will hold
- */
+  * A KD-Tree implementation
+  *
+  * Tree construction is done in less than O([k-1]n log n)
+  *
+  * @param dim               the dimension of the points in tree nodes
+  * @param pointValueInput   a sequence of point x value pairs to construct the tree from
+  * @param forkJoinThreshold the threshold above which the construction will be done asynchronously
+  * @tparam A the type of values the nodes will hold
+  */
 final class KDTree[A](val dim: Int, pointValueInput: Seq[Product2[HyperPoint, A]], forkJoinThreshold: Int)
                      (implicit xc: ExecutionContext = ExecutionContext.global)
   extends Tree[KDNode[A]] with Immutable {
@@ -105,12 +105,13 @@ final class KDTree[A](val dim: Int, pointValueInput: Seq[Product2[HyperPoint, A]
   }
 
   /**
-   * Filter all Nodes whose point is contained by the given Shape.
-   *
-   * The complexity of this algorithm is O(N)
-   * @param shape the Shape that defines the search range
-   * @return a list of NNResult objects
-   */
+    * Filter all Nodes whose point is contained by the given Shape.
+    *
+    * The complexity of this algorithm is O(N)
+    *
+    * @param shape the Shape that defines the search range
+    * @return a list of NNResult objects
+    */
   def filterRange(shape: Shape): List[KDNode[A]] = {
     require(shape != null, "shape must not be null")
 
@@ -136,12 +137,13 @@ final class KDTree[A](val dim: Int, pointValueInput: Seq[Product2[HyperPoint, A]
   }
 
   /**
-   * Filter all Nodes whose point is contained by the given HyperSphere.
-   *
-   * The complexity of this algorithm is O(log N)
-   * @param sphere the HyperSphere that defines the search range
-   * @return a list of NNResult objects
-   */
+    * Filter all Nodes whose point is contained by the given HyperSphere.
+    *
+    * The complexity of this algorithm is O(log N)
+    *
+    * @param sphere the HyperSphere that defines the search range
+    * @return a list of NNResult objects
+    */
   def filterRange(sphere: HyperSphere): List[NNResult[A]] = {
     require(sphere != null, "Argument 'range' must not be null")
     require(sphere.dim == dim, "Dimension of 'searchPoint' (%d) does not match dimension of this tree (%d).".format(sphere.dim, dim))
@@ -191,8 +193,8 @@ final class KDTree[A](val dim: Int, pointValueInput: Seq[Product2[HyperPoint, A]
     if (k == 0)
       return Nil
 
-    var resultList = mutable.LinkedList[NNResult[A]]()
-    var farNode = mutable.LinkedList[NNResult[A]]()
+    // list of result-nodes, ordered by distance
+    var resultList = List[NNResult[A]]()
 
     def search(node: Option[KDNode[A]]) {
       if (node.isEmpty)
@@ -208,28 +210,26 @@ final class KDTree[A](val dim: Int, pointValueInput: Seq[Product2[HyperPoint, A]
 
         // search in the HyperRect not containing searchPoint
         // if it intersects with searchRange
-        if (farNode.isEmpty || new HyperSphere(searchPoint, farNode.elem.distance).contains(farChild.get.point))
+        if (resultList.isEmpty || new HyperSphere(searchPoint, resultList.last.distance).contains(farChild.get.point))
           search(farChild)
       }
 
       val distanceToSearchPoint = searchPoint.distance(node.get.point)
+
       if (resultList.size < k) {
         val element = new NNResult(node.get, distanceToSearchPoint)
-        val list = mutable.LinkedList[NNResult[A]](element)
-        resultList = resultList.append(list)
-
-        if (farNode.isEmpty || (farNode.elem compare element) < 0)
-          farNode = list
+        resultList = element :: resultList
       }
-      else if (distanceToSearchPoint < farNode.elem.distance) {
+      else if (distanceToSearchPoint < resultList.last.distance) {
         val element = new NNResult(node.get, distanceToSearchPoint)
-        farNode.elem = element
+        val insertAt = resultList.indexWhere(r => r.distance > distanceToSearchPoint)
+        resultList = (resultList.drop(insertAt) ::: element :: resultList.take(insertAt)).take(k)
       }
     }
 
     search(root)
 
-    resultList.toList
+    resultList
   }
 }
 
@@ -242,13 +242,14 @@ object KDTree {
   }
 
   /**
-   * Creates a new KDTree from `pointValueTuples`.
-   * Assumes that the dimension of the first point in `pointValueTuples` is the desired dimension of the tree.
-   * Uses the DEFAULT_THRESHOLD for parallelization
-   * @param pointValueTuples the point x value mappings the nodes will hold
-   * @tparam A The type of the values the nodes will hold
-   * @return a new KDTree of the assumed dimension
-   */
+    * Creates a new KDTree from `pointValueTuples`.
+    * Assumes that the dimension of the first point in `pointValueTuples` is the desired dimension of the tree.
+    * Uses the DEFAULT_THRESHOLD for parallelization
+    *
+    * @param pointValueTuples the point x value mappings the nodes will hold
+    * @tparam A The type of the values the nodes will hold
+    * @return a new KDTree of the assumed dimension
+    */
   def apply[A](pointValueTuples: Seq[Product2[HyperPoint, A]]): KDTree[A] = {
     if (pointValueTuples.isEmpty)
       throw new IllegalArgumentException("Cannot derive tree dimension for an empty sequence")
