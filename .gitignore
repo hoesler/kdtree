@@ -1,7 +1,5 @@
-.DS_Store
 .idea/
 KDTree.iml
 reports/
-target/
 .gradle/
 build/

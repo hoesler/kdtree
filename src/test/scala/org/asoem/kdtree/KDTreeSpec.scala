@@ -48,13 +48,13 @@ class KDTreeSpec extends FlatSpec with Matchers {
     val tree = KDTree(points.map(e => (e, 0)))
     val nodeList1 = tree.findNeighbours(HyperPoint(9.1, 6.1), k = 1) map (e => e.point)
     val expected1 = List[HyperPoint](points(2))
-    assert(nodeList1.sameElements(expected1),
+    assert(nodeList1 == expected1,
       "NNSearch reported " + nodeList1 + "; Expected was " + expected1 + " for tree\n" + tree)
   }
 
   it should "find an existing node by it's key" in {
     val tree = KDTree(points.map(e => (e, 0)))
-    val expected = points(0)
+    val expected = points.head
     val resultList = tree.findNeighbours(expected, 1)
     assert(resultList.size == 1 && resultList.head.point == expected,
       "NNSearch reported " + resultList + "; Expected was " + expected + " for tree\n" + tree)
@@ -68,9 +68,9 @@ class KDTreeSpec extends FlatSpec with Matchers {
     val resultList = tree_with_dup.filterRange(HyperSphere(HyperPoint(7, 2), 1.5))
     val resultListPoints = resultList.map(e => e.point)
 
-    val expected = List[HyperPoint](points_with_dup(0), points_with_dup(6), points_with_dup(5))
+    val expected = List[HyperPoint](points_with_dup.head, points_with_dup(6), points_with_dup(5))
 
-    assert(resultListPoints.sameElements(expected),
+    assert(resultListPoints == expected,
       "NNSearch reported " + resultListPoints + "; Expected was " + expected + " for tree\n" + tree_with_dup)
   }
 }
